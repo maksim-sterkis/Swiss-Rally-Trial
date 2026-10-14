@@ -1,0 +1,1918 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>Tarmac & Gravel — Swiss Rally Trial</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --paper: #EAE4DC;
+      --paper-dark: #DCD3C6;
+      --asphalt: #2B2B2A;
+      --gravel: #B8A58E;
+      --terracotta: #C85A32;
+      --pine: #3A5A40;
+      --cream: #F4F1EA;
+      --ink: #1E1E1C;
+    }
+
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: var(--paper);
+      color: var(--ink);
+      font-family: 'JetBrains Mono', monospace;
+      touch-action: none;
+    }
+
+    .font-display {
+      font-family: 'Space Grotesk', sans-serif;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      touch-action: none;
+    }
+
+    /* Crisp hard-edged print shadow */
+    .print-card {
+      background-color: var(--cream);
+      border: 2px solid var(--ink);
+      box-shadow: 4px 4px 0px var(--ink);
+    }
+
+    .print-btn {
+      background-color: var(--cream);
+      border: 2px solid var(--ink);
+      box-shadow: 2px 2px 0px var(--ink);
+      transition: transform 0.06s ease, box-shadow 0.06s ease, background-color 0.1s ease;
+    }
+
+    .print-btn:active {
+      transform: translate(2px, 2px);
+      box-shadow: 0px 0px 0px var(--ink);
+    }
+
+    .print-btn.active-stage {
+      background-color: var(--terracotta);
+      color: var(--cream);
+    }
+  </style>
+</head>
+<body class="relative w-full h-full select-none overflow-hidden">
+
+  <!-- Primary Game Canvas -->
+  <canvas id="gameCanvas"></canvas>
+
+  <!-- Minimalist Swiss Heuer Timing Strip (Top) -->
+  <header class="fixed top-0 left-0 right-0 z-20 pointer-events-none px-2 pt-2 sm:px-5 sm:pt-4 flex flex-col gap-1.5 max-w-5xl mx-auto">
+    <div class="print-card pointer-events-auto px-2 py-1.5 sm:px-4 sm:py-2.5 flex items-center justify-between gap-1.5 sm:gap-3">
+      <!-- Stage Indicator & Selector Button -->
+      <div class="flex items-center gap-1.5 sm:gap-2.5 min-w-0 flex-1">
+        <button id="stageMenuBtn" class="print-btn px-2 py-1 text-[11px] sm:text-sm font-bold tracking-tight flex items-center gap-1 shrink-0" title="Select Stage">
+          <span class="inline-block w-1.5 h-1.5 sm:w-2 sm:h-2 bg-[#C85A32]"></span>
+          <span id="stageCodeLabel">SS1</span>
+          <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M6 9l6 6 6-6"/>
+          </svg>
+        </button>
+        <div class="min-w-0 flex-1">
+          <div id="stageNameLabel" class="font-display font-bold text-[11px] sm:text-sm uppercase tracking-tight sm:tracking-wider truncate leading-tight">Col de Turini</div>
+          <div id="surfaceBadge" class="text-[9px] sm:text-xs font-bold uppercase tracking-wider text-[#3A5A40] truncate leading-tight">TARMAC</div>
+        </div>
+      </div>
+
+      <!-- Primary Chronometer -->
+      <div class="flex items-center gap-2 sm:gap-5 shrink-0">
+        <div class="text-right">
+          <div class="text-[8px] sm:text-[10px] uppercase tracking-wider opacity-70 leading-none">TIME</div>
+          <div id="currentTimeLabel" class="text-xs sm:text-xl font-extrabold tabular-nums tracking-tight leading-tight">00:00.00</div>
+        </div>
+        <div class="hidden sm:block text-right border-l-2 border-[#1E1E1C] pl-3 sm:pl-4">
+          <div class="text-[10px] uppercase tracking-widest opacity-70 leading-none">BEST</div>
+          <div id="bestTimeLabel" class="text-sm sm:text-base font-bold tabular-nums text-[#C85A32] leading-tight">--:--.--</div>
+        </div>
+      </div>
+
+      <!-- Utility Buttons (Reset & Audio) -->
+      <div class="flex items-center gap-1 sm:gap-2 shrink-0">
+        <button id="restartBtn" class="print-btn px-1.5 sm:px-2.5 py-1 text-[10px] sm:text-xs font-bold uppercase tracking-tight sm:tracking-wider" title="Restart Stage (R)">
+          RESET
+        </button>
+        <button id="audioBtn" class="print-btn px-1.5 sm:px-2.5 py-1 text-[10px] sm:text-xs font-bold uppercase tracking-tight sm:tracking-wider bg-[#3A5A40] text-[#F4F1EA]" title="Toggle Engine & Gravel Sound (M)">
+          SOUND:ON
+        </button>
+      </div>
+    </div>
+
+    <!-- Sector Split Bar & Mechanical Telemetry -->
+    <div class="flex items-center justify-between gap-1 text-[10px] sm:text-[11px] font-bold">
+      <div class="flex items-center gap-1 min-w-0">
+        <div id="sector1Box" class="bg-[#F4F1EA] border-2 border-[#1E1E1C] px-1.5 sm:px-2 py-0.5 tabular-nums truncate">S1 --.--</div>
+        <div id="sector2Box" class="bg-[#F4F1EA] border-2 border-[#1E1E1C] px-1.5 sm:px-2 py-0.5 tabular-nums truncate">S2 --.--</div>
+        <div id="sector3Box" class="bg-[#F4F1EA] border-2 border-[#1E1E1C] px-1.5 sm:px-2 py-0.5 tabular-nums truncate">S3 --.--</div>
+      </div>
+      <div class="bg-[#F4F1EA] border-2 border-[#1E1E1C] px-2 py-0.5 tabular-nums flex items-center gap-1.5 shrink-0">
+        <span id="gearLabel" class="text-[#C85A32] font-extrabold">G1</span>
+        <span id="speedLabel">000 KM/H</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Stage Selection & Instructions Drawer (Ultra-Compact Zero-Scroll Layout) -->
+  <div id="stageModal" class="fixed inset-0 z-30 bg-[#1E1E1C]/40 flex items-center justify-center p-2.5">
+    <div class="print-card w-full max-w-md p-2.5 sm:p-3.5 flex flex-col gap-1.5">
+      <div class="flex items-center justify-between border-b-2 border-[#1E1E1C] pb-1">
+        <div class="flex items-center gap-1.5">
+          <span class="text-[9px] font-bold uppercase tracking-widest bg-[#C85A32] text-[#F4F1EA] px-1.5 py-0.5">1974 TRIAL</span>
+          <h1 class="font-display text-sm sm:text-base font-bold uppercase tracking-tight">Tarmac & Gravel</h1>
+        </div>
+        <button id="closeModalBtn" class="print-btn px-2 py-0.5 text-[10px] font-bold uppercase">CLOSE</button>
+      </div>
+
+      <!-- Compact Stage List (5 Stages) -->
+      <div class="flex flex-col gap-1">
+        <button data-stage="0" class="stage-option print-btn active-stage px-2 py-1 text-left flex items-center justify-between">
+          <span class="font-display font-bold text-[11px] sm:text-xs uppercase truncate pr-2">SS1 — Col de Turini <span class="font-normal opacity-80 text-[10px]">• Mixed</span></span>
+          <span id="modalBest0" class="text-[10px] font-bold tabular-nums shrink-0">--:--.--</span>
+        </button>
+        <button data-stage="1" class="stage-option print-btn px-2 py-1 text-left flex items-center justify-between">
+          <span class="font-display font-bold text-[11px] sm:text-xs uppercase truncate pr-2">SS2 — Val d'Orcia <span class="font-normal opacity-80 text-[10px]">• Dirt</span></span>
+          <span id="modalBest1" class="text-[10px] font-bold tabular-nums shrink-0">--:--.--</span>
+        </button>
+        <button data-stage="2" class="stage-option print-btn px-2 py-1 text-left flex items-center justify-between">
+          <span class="font-display font-bold text-[11px] sm:text-xs uppercase truncate pr-2">SS3 — Monte Cassino <span class="font-normal opacity-80 text-[10px]">• Mixed</span></span>
+          <span id="modalBest2" class="text-[10px] font-bold tabular-nums shrink-0">--:--.--</span>
+        </button>
+        <button data-stage="3" class="stage-option print-btn px-2 py-1 text-left flex items-center justify-between">
+          <span class="font-display font-bold text-[11px] sm:text-xs uppercase truncate pr-2">SS4 — Sanremo Passo <span class="font-normal opacity-80 text-[10px]">• Tarmac</span></span>
+          <span id="modalBest3" class="text-[10px] font-bold tabular-nums shrink-0">--:--.--</span>
+        </button>
+        <button data-stage="4" class="stage-option print-btn px-2 py-1 text-left flex items-center justify-between">
+          <span class="font-display font-bold text-[11px] sm:text-xs uppercase truncate pr-2">SS5 — Acropolis Special <span class="font-normal opacity-80 text-[10px]">• Dirt</span></span>
+          <span id="modalBest4" class="text-[10px] font-bold tabular-nums shrink-0">--:--.--</span>
+        </button>
+      </div>
+
+      <!-- Compact Ergonomic Control Diagram (Left / Hold Both to Brake / Right) -->
+      <div class="bg-[#EAE4DC] border-2 border-[#1E1E1C] p-1.5 text-[10px] grid grid-cols-3 gap-1 text-center font-bold">
+        <div class="bg-[#F4F1EA] border border-[#1E1E1C] py-1 px-1">
+          <div>LEFT / A</div>
+          <div class="text-[8px] opacity-75">STEER L</div>
+        </div>
+        <div class="bg-[#F4F1EA] border border-[#1E1E1C] py-1 px-1 text-[#C85A32]">
+          <div>HOLD BOTH</div>
+          <div class="text-[8px] text-[#1E1E1C] opacity-80">BRAKE / REV</div>
+        </div>
+        <div class="bg-[#F4F1EA] border border-[#1E1E1C] py-1 px-1">
+          <div>RIGHT / D</div>
+          <div class="text-[8px] opacity-75">STEER R</div>
+        </div>
+      </div>
+
+      <button id="startStageBtn" class="print-btn bg-[#2B2B2A] text-[#F4F1EA] py-1.5 font-display font-bold text-xs sm:text-sm uppercase tracking-wider text-center">
+        START STAGE
+      </button>
+    </div>
+  </div>
+
+  <!-- Stage Finish Timing Slip Overlay -->
+  <div id="finishOverlay" class="hidden fixed inset-0 z-30 bg-[#1E1E1C]/35 flex items-center justify-center p-4">
+    <div class="print-card w-full max-w-sm p-5 flex flex-col gap-4">
+      <div class="border-b-2 border-[#1E1E1C] pb-2 flex items-center justify-between">
+        <span class="font-display font-bold text-lg uppercase">STAGE COMPLETE</span>
+        <span id="newRecordBadge" class="hidden bg-[#C85A32] text-[#F4F1EA] text-[10px] font-bold px-2 py-0.5 uppercase">NEW RECORD</span>
+      </div>
+      <div class="flex flex-col gap-1.5 text-sm">
+        <div class="flex justify-between">
+          <span class="opacity-75">STAGE TIME:</span>
+          <span id="finishTimeVal" class="font-extrabold tabular-nums">00:00.00</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="opacity-75">PERSONAL BEST:</span>
+          <span id="finishBestVal" class="font-bold tabular-nums text-[#C85A32]">00:00.00</span>
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-2 pt-1">
+        <button id="retryStageBtn" class="print-btn py-2.5 font-bold text-xs uppercase tracking-wider">
+          RUN AGAIN
+        </button>
+        <button id="nextStageBtn" class="print-btn bg-[#C85A32] text-[#F4F1EA] py-2.5 font-bold text-xs uppercase tracking-wider">
+          NEXT STAGE
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Subtle Diegetic Touch Zone Brackets (Bottom Corners) -->
+  <div id="touchHints" class="fixed bottom-3 left-3 right-3 z-10 pointer-events-none flex justify-between items-end transition-opacity duration-500">
+    <div id="leftTouchIndicator" class="border-l-2 border-b-2 border-[#1E1E1C]/60 px-3 py-2 text-[11px] font-bold uppercase tracking-widest bg-[#EAE4DC]/75">
+      ◄ STEER L
+    </div>
+    <div id="brakeTouchIndicator" class="text-[10px] font-bold uppercase tracking-widest opacity-70 pb-1 px-2 py-1">
+      HOLD BOTH = BRAKE / REV
+    </div>
+    <div id="rightTouchIndicator" class="border-r-2 border-b-2 border-[#1E1E1C]/60 px-3 py-2 text-[11px] font-bold uppercase tracking-widest bg-[#EAE4DC]/75">
+      STEER R ►
+    </div>
+  </div>
+
+  <script>
+    /**
+     * TARMAC & GRAVEL — 1970s Swiss Motorsport Rally Trial
+     * Zero-Slop Architecture:
+     * - Locked 120Hz Physics Timestep with authentic slip-angle drifting
+     * - Offscreen Baked World with blended Asphalt-to-Dirt transitions & Persistent Skidmarks
+     * - Procedural Web Audio Synthesizer (Boxer engine + surface scrub)
+     */
+
+    const PALETTE = {
+      paper: '#EAE4DC',
+      paperDark: '#D8CFC2',
+      asphalt: '#2B2B2A',
+      asphaltEdge: '#1E1E1C',
+      gravel: '#B8A58E',
+      gravelDark: '#9F8C75',
+      gravelLight: '#C9B8A3',
+      terracotta: '#C85A32',
+      pine: '#3A5A40',
+      pineShadow: '#233827',
+      cream: '#F4F1EA',
+      ink: '#1E1E1C',
+      gold: '#D99B26'
+    };
+
+    // Procedural Web Audio Synthesizer (Zero External Assets)
+    class RallyAudio {
+      constructor() {
+        this.ctx = null;
+        this.enabled = true; // Enabled by default; auto-unlocks on first tap/click
+        this.unlocked = false;
+        this.engineOsc1 = null;
+        this.engineOsc2 = null;
+        this.engineGain = null;
+        this.engineFilter = null;
+        this.noiseNode = null;
+        this.noiseFilter = null;
+        this.noiseGain = null;
+      }
+
+      init() {
+        if (this.ctx) return;
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        this.ctx = new AudioCtx();
+
+        // Engine Boxer Synth (Dual detuned oscillators + sub-octave pulse through lowpass)
+        this.engineOsc1 = this.ctx.createOscillator();
+        this.engineOsc2 = this.ctx.createOscillator();
+        this.engineOsc1.type = 'sawtooth';
+        this.engineOsc2.type = 'square';
+
+        this.engineFilter = this.ctx.createBiquadFilter();
+        this.engineFilter.type = 'lowpass';
+        this.engineFilter.frequency.value = 320;
+        this.engineFilter.Q.value = 2.2;
+
+        this.engineGain = this.ctx.createGain();
+        this.engineGain.gain.value = 0.0001;
+
+        this.engineOsc1.connect(this.engineFilter);
+        this.engineOsc2.connect(this.engineFilter);
+        this.engineFilter.connect(this.engineGain);
+        this.engineGain.connect(this.ctx.destination);
+
+        this.engineOsc1.start();
+        this.engineOsc2.start();
+
+        // Pink/Brown Noise Generator for Gravel Crunch & Tire Scrub
+        const bufferSize = this.ctx.sampleRate * 2;
+        const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const output = noiseBuffer.getChannelData(0);
+        let lastOut = 0.0;
+        for (let i = 0; i < bufferSize; i++) {
+          const white = Math.random() * 2 - 1;
+          output[i] = (lastOut + (0.05 * white)) / 1.05;
+          lastOut = output[i];
+          output[i] *= 3.0;
+        }
+
+        this.noiseNode = this.ctx.createBufferSource();
+        this.noiseNode.buffer = noiseBuffer;
+        this.noiseNode.loop = true;
+
+        this.noiseFilter = this.ctx.createBiquadFilter();
+        this.noiseFilter.type = 'bandpass';
+        this.noiseFilter.frequency.value = 650;
+        this.noiseFilter.Q.value = 1.5;
+
+        this.noiseGain = this.ctx.createGain();
+        this.noiseGain.gain.value = 0.0001;
+
+        this.noiseNode.connect(this.noiseFilter);
+        this.noiseFilter.connect(this.noiseGain);
+        this.noiseGain.connect(this.ctx.destination);
+        this.noiseNode.start();
+      }
+
+      unlock() {
+        if (!this.enabled) return;
+        if (!this.ctx) this.init();
+        if (!this.ctx) return;
+        if (this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+        if (!this.unlocked && this.ctx.state === 'running') {
+          // Play a 1-sample silent buffer to satisfy strict iOS Safari audio unlock
+          const buf = this.ctx.createBuffer(1, 1, 22050);
+          const src = this.ctx.createBufferSource();
+          src.buffer = buf;
+          src.connect(this.ctx.destination);
+          src.start(0);
+          this.unlocked = true;
+        }
+      }
+
+      toggle() {
+        if (!this.ctx) this.init();
+        if (!this.ctx) return false;
+        this.enabled = !this.enabled;
+        if (this.enabled) {
+          this.unlock();
+          this.playStartChime();
+        } else if (this.engineGain) {
+          this.engineGain.gain.setTargetAtTime(0.0001, this.ctx.currentTime, 0.04);
+          this.noiseGain.gain.setTargetAtTime(0.0001, this.ctx.currentTime, 0.04);
+        }
+        return this.enabled;
+      }
+
+      playStartChime() {
+        if (!this.enabled || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(520, now);
+        osc.frequency.setValueAtTime(780, now + 0.06);
+        gain.gain.setValueAtTime(0.14, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.16);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.17);
+      }
+
+      update(rpmRatio, slipIntensity, surface, speedRatio) {
+        if (!this.enabled || !this.ctx || this.ctx.state !== 'running') return;
+        const now = this.ctx.currentTime;
+
+        // Audible flat-four / Group 4 rally engine note: 58Hz idle up to 215Hz redline
+        const baseFreq = 58 + rpmRatio * 155;
+        this.engineOsc1.frequency.setTargetAtTime(baseFreq, now, 0.025);
+        this.engineOsc2.frequency.setTargetAtTime(baseFreq * 0.503, now, 0.025);
+        this.engineFilter.frequency.setTargetAtTime(240 + rpmRatio * 950, now, 0.03);
+        this.engineGain.gain.setTargetAtTime(0.11 + rpmRatio * 0.14, now, 0.03);
+
+        // Tire scrub / gravel texture
+        if (surface === 'gravel') {
+          const gravelGain = Math.min(0.28, speedRatio * 0.11 + slipIntensity * 0.18);
+          this.noiseFilter.frequency.setTargetAtTime(420 + speedRatio * 420 + slipIntensity * 280, now, 0.03);
+          this.noiseFilter.Q.setTargetAtTime(1.1, now, 0.03);
+          this.noiseGain.gain.setTargetAtTime(Math.max(0.0001, gravelGain), now, 0.03);
+        } else if (surface === 'tarmac') {
+          const squealGain = slipIntensity > 0.2 ? Math.min(0.22, (slipIntensity - 0.2) * 0.28) : 0.0001;
+          this.noiseFilter.frequency.setTargetAtTime(880 + slipIntensity * 420, now, 0.03);
+          this.noiseFilter.Q.setTargetAtTime(3.6, now, 0.03);
+          this.noiseGain.gain.setTargetAtTime(squealGain, now, 0.03);
+        } else {
+          // Off-track rough earth
+          const roughGain = Math.min(0.25, speedRatio * 0.16);
+          this.noiseFilter.frequency.setTargetAtTime(300, now, 0.03);
+          this.noiseFilter.Q.setTargetAtTime(0.9, now, 0.03);
+          this.noiseGain.gain.setTargetAtTime(Math.max(0.0001, roughGain), now, 0.03);
+        }
+      }
+
+      playImpact() {
+        if (!this.enabled || !this.ctx || this.ctx.state !== 'running') return;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(130, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(38, this.ctx.currentTime + 0.12);
+        gain.gain.setValueAtTime(0.26, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.13);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.14);
+      }
+    }
+
+    /**
+     * 5 Long, Technical Special Stage Definitions
+     * Coordinates live in a 4600x4600 world space.
+     * Each point: { x, y, w (track width), surface: 'tarmac' | 'gravel', barrier: 'none' | 'left' | 'right' | 'both' }
+     */
+    const STAGES = [
+      {
+        code: 'SS1',
+        name: 'Col de Turini',
+        subtitle: 'Alpine Ascent • Tarmac & Gravel Switchbacks',
+        points: [
+          { x: 420, y: 4100, w: 120, surface: 'tarmac', barrier: 'none' },
+          { x: 420, y: 3450, w: 118, surface: 'tarmac', barrier: 'left' },
+          { x: 540, y: 2800, w: 114, surface: 'tarmac', barrier: 'right' },
+          { x: 1080, y: 2520, w: 112, surface: 'tarmac', barrier: 'left' },
+          { x: 1180, y: 1980, w: 110, surface: 'tarmac', barrier: 'right' },
+          { x: 620, y: 1680, w: 112, surface: 'tarmac', barrier: 'left' },
+          { x: 480, y: 1140, w: 116, surface: 'tarmac', barrier: 'left' },
+          { x: 960, y: 780, w: 124, surface: 'gravel', barrier: 'right' },
+          // High Alpine Loose Gravel Switchback Sector
+          { x: 1620, y: 980, w: 128, surface: 'gravel', barrier: 'left' },
+          { x: 1920, y: 520, w: 126, surface: 'gravel', barrier: 'right' },
+          { x: 2580, y: 440, w: 128, surface: 'gravel', barrier: 'left' },
+          { x: 2820, y: 960, w: 122, surface: 'gravel', barrier: 'right' },
+          { x: 2240, y: 1320, w: 124, surface: 'gravel', barrier: 'left' },
+          { x: 2420, y: 1840, w: 118, surface: 'tarmac', barrier: 'right' },
+          // Fast Technical Tarmac Descent with Hairpins
+          { x: 3220, y: 1620, w: 114, surface: 'tarmac', barrier: 'left' },
+          { x: 3880, y: 1320, w: 110, surface: 'tarmac', barrier: 'right' },
+          { x: 4120, y: 1880, w: 112, surface: 'tarmac', barrier: 'right' },
+          { x: 3440, y: 2240, w: 112, surface: 'tarmac', barrier: 'left' },
+          { x: 3980, y: 2740, w: 116, surface: 'gravel', barrier: 'right' },
+          { x: 3820, y: 3420, w: 122, surface: 'gravel', barrier: 'right' },
+          { x: 3080, y: 3220, w: 118, surface: 'tarmac', barrier: 'left' },
+          { x: 2540, y: 3780, w: 114, surface: 'tarmac', barrier: 'right' },
+          { x: 1760, y: 4060, w: 116, surface: 'tarmac', barrier: 'left' },
+          { x: 1180, y: 3720, w: 118, surface: 'tarmac', barrier: 'none' }
+        ]
+      },
+      {
+        code: 'SS2',
+        name: "Val d'Orcia",
+        subtitle: 'Tuscan Endurance • Flowing Dirt & Narrow Bridges',
+        points: [
+          { x: 640, y: 3980, w: 132, surface: 'gravel', barrier: 'none' },
+          { x: 1240, y: 3680, w: 130, surface: 'gravel', barrier: 'right' },
+          { x: 920, y: 3040, w: 128, surface: 'gravel', barrier: 'left' },
+          { x: 460, y: 2480, w: 132, surface: 'gravel', barrier: 'left' },
+          { x: 860, y: 1880, w: 126, surface: 'gravel', barrier: 'right' },
+          { x: 480, y: 1180, w: 130, surface: 'gravel', barrier: 'left' },
+          { x: 980, y: 540, w: 128, surface: 'gravel', barrier: 'left' },
+          { x: 1780, y: 740, w: 122, surface: 'gravel', barrier: 'right' },
+          // Paved Village Bridge Crossing
+          { x: 2220, y: 1280, w: 102, surface: 'tarmac', barrier: 'both' },
+          { x: 2740, y: 1020, w: 104, surface: 'tarmac', barrier: 'both' },
+          // Back onto fast sweeping Tuscan gravel crests
+          { x: 3180, y: 480, w: 132, surface: 'gravel', barrier: 'left' },
+          { x: 3940, y: 680, w: 134, surface: 'gravel', barrier: 'right' },
+          { x: 3620, y: 1380, w: 128, surface: 'gravel', barrier: 'left' },
+          { x: 4140, y: 2040, w: 130, surface: 'gravel', barrier: 'right' },
+          { x: 3420, y: 2480, w: 124, surface: 'gravel', barrier: 'left' },
+          { x: 3980, y: 3160, w: 128, surface: 'gravel', barrier: 'right' },
+          { x: 3580, y: 3940, w: 126, surface: 'gravel', barrier: 'right' },
+          { x: 2780, y: 3580, w: 122, surface: 'tarmac', barrier: 'left' },
+          { x: 2280, y: 4080, w: 126, surface: 'gravel', barrier: 'right' },
+          { x: 1580, y: 4160, w: 130, surface: 'gravel', barrier: 'none' }
+        ]
+      },
+      {
+        code: 'SS3',
+        name: 'Monte Cassino',
+        subtitle: 'Mixed Technical Pass • Rapid Surface Changes',
+        points: [
+          { x: 2200, y: 4150, w: 116, surface: 'tarmac', barrier: 'none' },
+          { x: 1380, y: 4020, w: 114, surface: 'tarmac', barrier: 'left' },
+          { x: 640, y: 3580, w: 116, surface: 'tarmac', barrier: 'left' },
+          { x: 1080, y: 3020, w: 118, surface: 'gravel', barrier: 'right' },
+          { x: 520, y: 2480, w: 122, surface: 'gravel', barrier: 'left' },
+          { x: 1180, y: 2060, w: 114, surface: 'tarmac', barrier: 'right' },
+          { x: 620, y: 1420, w: 112, surface: 'tarmac', barrier: 'left' },
+          { x: 880, y: 680, w: 120, surface: 'gravel', barrier: 'left' },
+          { x: 1680, y: 480, w: 124, surface: 'gravel', barrier: 'right' },
+          { x: 1960, y: 1180, w: 112, surface: 'tarmac', barrier: 'left' },
+          { x: 2560, y: 620, w: 110, surface: 'tarmac', barrier: 'both' },
+          { x: 3340, y: 540, w: 122, surface: 'gravel', barrier: 'right' },
+          { x: 3020, y: 1280, w: 124, surface: 'gravel', barrier: 'left' },
+          { x: 3880, y: 1120, w: 118, surface: 'tarmac', barrier: 'right' },
+          { x: 4120, y: 1840, w: 114, surface: 'tarmac', barrier: 'right' },
+          { x: 3360, y: 2180, w: 122, surface: 'gravel', barrier: 'left' },
+          { x: 4060, y: 2780, w: 124, surface: 'gravel', barrier: 'right' },
+          { x: 3320, y: 3260, w: 114, surface: 'tarmac', barrier: 'left' },
+          { x: 3860, y: 3920, w: 116, surface: 'tarmac', barrier: 'right' },
+          { x: 2980, y: 4080, w: 116, surface: 'tarmac', barrier: 'none' }
+        ]
+      },
+      {
+        code: 'SS4',
+        name: 'Sanremo Passo',
+        subtitle: 'Coastal Cliffside • High-Speed Tarmac & Gorge',
+        points: [
+          { x: 3980, y: 3980, w: 114, surface: 'tarmac', barrier: 'none' },
+          { x: 3960, y: 3120, w: 112, surface: 'tarmac', barrier: 'right' },
+          { x: 3320, y: 2680, w: 108, surface: 'tarmac', barrier: 'left' },
+          { x: 4080, y: 2160, w: 110, surface: 'tarmac', barrier: 'right' },
+          { x: 4040, y: 1280, w: 112, surface: 'tarmac', barrier: 'right' },
+          { x: 3420, y: 620, w: 108, surface: 'tarmac', barrier: 'left' },
+          { x: 2560, y: 880, w: 118, surface: 'gravel', barrier: 'left' },
+          { x: 2180, y: 440, w: 122, surface: 'gravel', barrier: 'right' },
+          { x: 1360, y: 580, w: 120, surface: 'gravel', barrier: 'left' },
+          { x: 1680, y: 1280, w: 118, surface: 'gravel', barrier: 'right' },
+          { x: 920, y: 1120, w: 112, surface: 'tarmac', barrier: 'left' },
+          { x: 460, y: 1640, w: 108, surface: 'tarmac', barrier: 'left' },
+          { x: 1140, y: 2120, w: 108, surface: 'tarmac', barrier: 'right' },
+          { x: 520, y: 2680, w: 110, surface: 'tarmac', barrier: 'left' },
+          { x: 640, y: 3560, w: 118, surface: 'gravel', barrier: 'left' },
+          { x: 1420, y: 3980, w: 122, surface: 'gravel', barrier: 'right' },
+          { x: 1960, y: 3280, w: 114, surface: 'tarmac', barrier: 'left' },
+          { x: 2680, y: 3860, w: 112, surface: 'tarmac', barrier: 'right' },
+          { x: 3220, y: 3460, w: 114, surface: 'tarmac', barrier: 'none' }
+        ]
+      },
+      {
+        code: 'SS5',
+        name: 'Acropolis Special',
+        subtitle: 'Parnassus Marathon • Brutal Dirt Hairpins',
+        points: [
+          { x: 520, y: 620, w: 126, surface: 'gravel', barrier: 'none' },
+          { x: 1340, y: 480, w: 124, surface: 'gravel', barrier: 'left' },
+          { x: 1860, y: 1040, w: 122, surface: 'gravel', barrier: 'right' },
+          { x: 2480, y: 480, w: 120, surface: 'gravel', barrier: 'left' },
+          { x: 3320, y: 560, w: 124, surface: 'gravel', barrier: 'right' },
+          { x: 4060, y: 920, w: 122, surface: 'gravel', barrier: 'right' },
+          { x: 3380, y: 1420, w: 118, surface: 'gravel', barrier: 'left' },
+          { x: 4080, y: 1980, w: 120, surface: 'gravel', barrier: 'right' },
+          { x: 3260, y: 2420, w: 112, surface: 'tarmac', barrier: 'left' },
+          { x: 2480, y: 1940, w: 110, surface: 'tarmac', barrier: 'right' },
+          { x: 1920, y: 2480, w: 120, surface: 'gravel', barrier: 'left' },
+          { x: 2680, y: 3020, w: 122, surface: 'gravel', barrier: 'right' },
+          { x: 3920, y: 3120, w: 124, surface: 'gravel', barrier: 'right' },
+          { x: 3780, y: 3960, w: 122, surface: 'gravel', barrier: 'right' },
+          { x: 2840, y: 3860, w: 118, surface: 'gravel', barrier: 'left' },
+          { x: 2180, y: 4140, w: 122, surface: 'gravel', barrier: 'right' },
+          { x: 1480, y: 3460, w: 118, surface: 'gravel', barrier: 'left' },
+          { x: 880, y: 4020, w: 120, surface: 'gravel', barrier: 'left' },
+          { x: 480, y: 3260, w: 114, surface: 'tarmac', barrier: 'left' },
+          { x: 1160, y: 2680, w: 114, surface: 'tarmac', barrier: 'right' },
+          { x: 520, y: 2040, w: 122, surface: 'gravel', barrier: 'left' },
+          { x: 1180, y: 1460, w: 124, surface: 'gravel', barrier: 'none' }
+        ]
+      }
+    ];
+
+    function catmullRom(p0, p1, p2, p3, t) {
+      const t2 = t * t;
+      const t3 = t2 * t;
+      return 0.5 * (
+        (2 * p1) +
+        (-p0 + p2) * t +
+        (2 * p0 - 5 * p1 + 4 * p2 - p3) * t2 +
+        (-p0 + 3 * p1 - 3 * p2 + p3) * t3
+      );
+    }
+
+    class StageWorld {
+      constructor() {
+        this.worldSize = 4600;
+        this.canvas = document.createElement('canvas');
+        this.canvas.width = this.worldSize;
+        this.canvas.height = this.worldSize;
+        this.ctx = this.canvas.getContext('2d');
+
+        this.samples = [];
+        this.barriers = [];
+        this.trees = [];
+        this.sectorIndices = [0, 0, 0];
+        this.startPose = { x: 0, y: 0, angle: 0 };
+      }
+
+      build(stageIndex) {
+        const stage = STAGES[stageIndex];
+        const pts = stage.points;
+        const rawSamples = [];
+        this.samples = [];
+        this.barriers = [];
+        this.trees = [];
+
+        // High-density raw spline evaluation
+        const stepsPerSegment = 40;
+        for (let i = 0; i < pts.length - 1; i++) {
+          const p0 = pts[Math.max(0, i - 1)];
+          const p1 = pts[i];
+          const p2 = pts[i + 1];
+          const p3 = pts[Math.min(pts.length - 1, i + 2)];
+
+          for (let s = 0; s < stepsPerSegment; s++) {
+            const t = s / stepsPerSegment;
+            const x = catmullRom(p0.x, p1.x, p2.x, p3.x, t);
+            const y = catmullRom(p0.y, p1.y, p2.y, p3.y, t);
+            const w = p1.w + (p2.w - p1.w) * t;
+            const surface = t < 0.5 ? p1.surface : p2.surface;
+            const barrier = t < 0.5 ? p1.barrier : p2.barrier;
+            rawSamples.push({ x, y, w, surface, barrier });
+          }
+        }
+        const last = pts[pts.length - 1];
+        rawSamples.push({ x: last.x, y: last.y, w: last.w, surface: last.surface, barrier: last.barrier });
+
+        // Resample spline at uniform arc-length intervals (18px) so corners never bunch up
+        const spacing = 18;
+        this.samples.push({ ...rawSamples[0], dist: 0 });
+        let accumDist = 0;
+        let totalDist = 0;
+
+        for (let i = 1; i < rawSamples.length; i++) {
+          const prev = rawSamples[i - 1];
+          const curr = rawSamples[i];
+          const segLen = Math.hypot(curr.x - prev.x, curr.y - prev.y);
+          if (segLen < 0.001) continue;
+
+          accumDist += segLen;
+          while (accumDist >= spacing) {
+            accumDist -= spacing;
+            totalDist += spacing;
+            const ratio = 1 - (accumDist / segLen);
+            this.samples.push({
+              x: prev.x + (curr.x - prev.x) * ratio,
+              y: prev.y + (curr.y - prev.y) * ratio,
+              w: prev.w + (curr.w - prev.w) * ratio,
+              surface: curr.surface,
+              barrier: curr.barrier,
+              dist: totalDist
+            });
+          }
+        }
+
+        // Compute smooth tangents, normals, curvature, and dirtBlend (0 = tarmac, 1 = gravel)
+        for (let i = 0; i < this.samples.length; i++) {
+          const prev = this.samples[Math.max(0, i - 1)];
+          const next = this.samples[Math.min(this.samples.length - 1, i + 1)];
+          const dx = next.x - prev.x;
+          const dy = next.y - prev.y;
+          const len = Math.hypot(dx, dy) || 1;
+          this.samples[i].tx = dx / len;
+          this.samples[i].ty = dy / len;
+          this.samples[i].nx = -dy / len;
+          this.samples[i].ny = dx / len;
+        }
+
+        // Calculate signed curvature and smooth surface transition blend factor
+        for (let i = 0; i < this.samples.length; i++) {
+          const prev = this.samples[Math.max(0, i - 2)];
+          const next = this.samples[Math.min(this.samples.length - 1, i + 2)];
+          // Signed cross product of tangents indicates which side is the tight inside of a corner
+          this.samples[i].signedCurv = prev.tx * next.ty - prev.ty * next.tx;
+
+          // Smooth surface blend over a +/- 7 sample window (approx 250px transition apron)
+          let gravelCount = 0;
+          let windowCount = 0;
+          for (let k = Math.max(0, i - 7); k <= Math.min(this.samples.length - 1, i + 7); k++) {
+            gravelCount += this.samples[k].surface === 'gravel' ? 1 : 0;
+            windowCount++;
+          }
+          this.samples[i].dirtBlend = gravelCount / windowCount;
+        }
+
+        // Sector indices (S1 at 33%, S2 at 66%, Finish at 97%)
+        this.sectorIndices = [
+          Math.floor(this.samples.length * 0.33),
+          Math.floor(this.samples.length * 0.66),
+          this.samples.length - 8
+        ];
+
+        // Start pose
+        const s0 = this.samples[5];
+        this.startPose = {
+          x: s0.x,
+          y: s0.y,
+          angle: Math.atan2(s0.ty, s0.tx)
+        };
+
+        this.generateProps(stageIndex);
+        this.bakeCanvas();
+      }
+
+      generateProps(seedOffset) {
+        let seed = (seedOffset + 1) * 9301;
+        const rand = () => {
+          seed = (seed * 49297 + 233280) % 233280;
+          return seed / 233280;
+        };
+
+        // Helper to prevent barrier posts from EVER bunching up or overlapping track
+        const tryAddBarrier = (bx, by, sampleIdx, side) => {
+          // 1. Check minimum spacing against existing barrier posts (44px min distance)
+          for (let j = this.barriers.length - 1; j >= 0; j--) {
+            const existing = this.barriers[j];
+            if (Math.hypot(bx - existing.x, by - existing.y) < 44) {
+              return;
+            }
+          }
+          // 2. Ensure barrier never encroaches into the track ribbon on sharp hairpins
+          const winStart = Math.max(0, sampleIdx - 14);
+          const winEnd = Math.min(this.samples.length - 1, sampleIdx + 14);
+          for (let j = winStart; j <= winEnd; j++) {
+            const s = this.samples[j];
+            if (Math.hypot(bx - s.x, by - s.y) < s.w * 0.5 + 8) {
+              return;
+            }
+          }
+          this.barriers.push({
+            x: bx,
+            y: by,
+            r: 8.5,
+            index: sampleIdx,
+            side
+          });
+        };
+
+        // Place roadside bollards cleanly along outer edges with anti-bunching guard
+        for (let i = 10; i < this.samples.length - 12; i += 3) {
+          const s = this.samples[i];
+          const offset = s.w * 0.5 + 12;
+
+          // Skip placing posts on the pinched inside apex of tight hairpins
+          const leftIsPinchedInside = s.signedCurv > 0.16;
+          const rightIsPinchedInside = s.signedCurv < -0.16;
+
+          if ((s.barrier === 'left' || s.barrier === 'both') && !leftIsPinchedInside) {
+            tryAddBarrier(s.x + s.nx * offset, s.y + s.ny * offset, i, 1);
+          }
+          if ((s.barrier === 'right' || s.barrier === 'both') && !rightIsPinchedInside) {
+            tryAddBarrier(s.x - s.nx * offset, s.y - s.ny * offset, i, -1);
+          }
+        }
+
+        // Scatter matte pine trees safely outside the track ribbon
+        for (let i = 0; i < 520; i++) {
+          const sampleIdx = Math.floor(rand() * this.samples.length);
+          const s = this.samples[sampleIdx];
+          const side = rand() > 0.5 ? 1 : -1;
+          const distFromCenter = s.w * 0.5 + 54 + rand() * 310;
+          const tx = s.x + s.nx * side * distFromCenter + (rand() - 0.5) * 45;
+          const ty = s.y + s.ny * side * distFromCenter + (rand() - 0.5) * 45;
+          const radius = 16 + rand() * 20;
+
+          let tooClose = false;
+          for (let j = 0; j < this.samples.length; j += 4) {
+            const check = this.samples[j];
+            if (Math.hypot(tx - check.x, ty - check.y) < check.w * 0.5 + radius + 26) {
+              tooClose = true;
+              break;
+            }
+          }
+          if (!tooClose) {
+            this.trees.push({ x: tx, y: ty, r: radius });
+          }
+        }
+      }
+
+      bakeCanvas() {
+        const ctx = this.ctx;
+        const W = this.worldSize;
+        ctx.clearRect(0, 0, W, W);
+
+        // 1. Base Sandstone Paper Ground
+        ctx.fillStyle = PALETTE.paper;
+        ctx.fillRect(0, 0, W, W);
+
+        // Topographic contour lines for Swiss map feel
+        ctx.strokeStyle = PALETTE.paperDark;
+        ctx.lineWidth = 1.5;
+        for (let r = 220; r < W * 1.25; r += 160) {
+          ctx.beginPath();
+          ctx.arc(W * 0.22, W * 0.24, r, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.arc(W * 0.82, W * 0.76, r * 0.88, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+
+        // 2. Outer Track Border (Ink Halo)
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        for (let i = 0; i < this.samples.length - 1; i++) {
+          const s1 = this.samples[i];
+          const s2 = this.samples[i + 1];
+          ctx.strokeStyle = PALETTE.asphaltEdge;
+          ctx.lineWidth = s1.w + 10;
+          ctx.beginPath();
+          ctx.moveTo(s1.x, s1.y);
+          ctx.lineTo(s2.x, s2.y);
+          ctx.stroke();
+        }
+
+        // 3. Base Track Surface Fill (Tarmac & Gravel)
+        for (let i = 0; i < this.samples.length - 1; i++) {
+          const s1 = this.samples[i];
+          const s2 = this.samples[i + 1];
+          ctx.strokeStyle = s1.surface === 'gravel' ? PALETTE.gravel : PALETTE.asphalt;
+          ctx.lineWidth = s1.w;
+          ctx.beginPath();
+          ctx.moveTo(s1.x, s1.y);
+          ctx.lineTo(s2.x, s2.y);
+          ctx.stroke();
+        }
+
+        // 4. Seamless Asphalt-to-Dirt Transition Aprons, Gravel Stippling & Centerlines
+        for (let i = 2; i < this.samples.length - 2; i++) {
+          const s = this.samples[i];
+          const prev = this.samples[i - 1];
+          const isTransitionEdge = s.surface !== prev.surface;
+
+          // If we are inside the transition zone (dirtBlend between 0.05 and 0.95), feather gravel & tire dust across the joint
+          if (s.dirtBlend > 0.04 && s.dirtBlend < 0.96) {
+            const count = Math.floor(14 * (1 - Math.abs(s.dirtBlend - 0.5) * 1.6));
+            for (let p = 0; p < count; p++) {
+              const hash1 = ((i * 53 + p * 97) % 100) / 100;
+              const hash2 = ((i * 29 + p * 61) % 100) / 100;
+              const lateral = (hash1 - 0.5) * (s.w - 10);
+              const longOffset = (hash2 - 0.5) * 20;
+              const gx = s.x + s.nx * lateral + s.tx * longOffset;
+              const gy = s.y + s.ny * lateral + s.ty * longOffset;
+              // Draw gravel scatter bleeding onto tarmac and dark tarmac ruts bleeding onto gravel
+              ctx.fillStyle = s.surface === 'tarmac' ? PALETTE.gravel : PALETTE.asphalt;
+              ctx.fillRect(gx, gy, 4 + (p % 3), 4 + (p % 2));
+            }
+
+            // Draw longitudinal tire dust streaks dragging across the transition boundary
+            if (i % 2 === 0) {
+              for (const trackSide of [-0.24, 0.24]) {
+                const rx = s.x + s.nx * (s.w * trackSide);
+                const ry = s.y + s.ny * (s.w * trackSide);
+                ctx.strokeStyle = s.surface === 'tarmac' ? 'rgba(184, 165, 142, 0.55)' : 'rgba(43, 43, 42, 0.42)';
+                ctx.lineWidth = 5;
+                ctx.beginPath();
+                ctx.moveTo(rx - s.tx * 12, ry - s.ty * 12);
+                ctx.lineTo(rx + s.tx * 12, ry + s.ty * 12);
+                ctx.stroke();
+              }
+            }
+          }
+
+          // Paint crisp Swiss surface-change rumble strip & terracotta warning markers right at the boundary
+          if (isTransitionEdge) {
+            const half = s.w * 0.5;
+            ctx.save();
+            ctx.strokeStyle = PALETTE.terracotta;
+            ctx.lineWidth = 4;
+            ctx.setLineDash([7, 7]);
+            ctx.beginPath();
+            ctx.moveTo(s.x + s.nx * half, s.y + s.ny * half);
+            ctx.lineTo(s.x - s.nx * half, s.y - s.ny * half);
+            ctx.stroke();
+            ctx.restore();
+          }
+
+          if (s.surface === 'gravel') {
+            // Loose dirt ruts and multi-tone pebble stippling
+            ctx.fillStyle = PALETTE.gravelDark;
+            for (let p = 0; p < 6; p++) {
+              const lateral = (((i * 37 + p * 73) % 100) / 100 - 0.5) * (s.w - 14);
+              const gx = s.x + s.nx * lateral;
+              const gy = s.y + s.ny * lateral;
+              ctx.fillRect(gx, gy, 3.5, 3.5);
+            }
+            ctx.fillStyle = PALETTE.gravelLight;
+            for (let p = 0; p < 3; p++) {
+              const lateral = (((i * 19 + p * 43) % 100) / 100 - 0.5) * (s.w - 20);
+              const gx = s.x + s.nx * lateral;
+              const gy = s.y + s.ny * lateral;
+              ctx.fillRect(gx, gy, 2.5, 2.5);
+            }
+          } else if (i % 4 === 0 && s.dirtBlend < 0.25) {
+            // Crisp painted centerline on pure tarmac
+            const next = this.samples[i + 1];
+            ctx.strokeStyle = PALETTE.cream;
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            ctx.moveTo(s.x, s.y);
+            ctx.lineTo(next.x, next.y);
+            ctx.stroke();
+          }
+        }
+
+        // 5. Sector & Start/Finish Gate Lines
+        this.drawGateLine(5, PALETTE.cream, 'START');
+        this.drawGateLine(this.sectorIndices[0], PALETTE.terracotta, 'S1');
+        this.drawGateLine(this.sectorIndices[1], PALETTE.terracotta, 'S2');
+        this.drawGateLine(this.sectorIndices[2], PALETTE.cream, 'FINISH', true);
+
+        // 6. Terracotta & Cream Roadside Bollards (Evenly spaced, never bunched)
+        for (let i = 0; i < this.barriers.length; i++) {
+          const b = this.barriers[i];
+          ctx.fillStyle = PALETTE.ink;
+          ctx.beginPath();
+          ctx.arc(b.x + 2, b.y + 2, b.r, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.fillStyle = i % 2 === 0 ? PALETTE.terracotta : PALETTE.cream;
+          ctx.strokeStyle = PALETTE.ink;
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+        }
+
+        // 7. Matte Forest Pine Canopies with Hard Drop Shadows
+        for (const tree of this.trees) {
+          ctx.fillStyle = PALETTE.pineShadow;
+          ctx.beginPath();
+          ctx.arc(tree.x + 6, tree.y + 6, tree.r, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.fillStyle = PALETTE.pine;
+          ctx.strokeStyle = PALETTE.ink;
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(tree.x, tree.y, tree.r, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.strokeStyle = PALETTE.pineShadow;
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.arc(tree.x - 2, tree.y - 2, tree.r * 0.55, 0, Math.PI * 1.4);
+          ctx.stroke();
+        }
+      }
+
+      drawGateLine(sampleIdx, color, label, checkered = false) {
+        const s = this.samples[sampleIdx];
+        if (!s) return;
+        const ctx = this.ctx;
+        const half = s.w * 0.5;
+        const x1 = s.x + s.nx * half;
+        const y1 = s.y + s.ny * half;
+        const x2 = s.x - s.nx * half;
+        const y2 = s.y - s.ny * half;
+
+        ctx.save();
+        ctx.strokeStyle = color;
+        ctx.lineWidth = checkered ? 10 : 5;
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+
+        if (checkered) {
+          ctx.strokeStyle = PALETTE.ink;
+          ctx.setLineDash([8, 8]);
+          ctx.lineWidth = 10;
+          ctx.beginPath();
+          ctx.moveTo(x1, y1);
+          ctx.lineTo(x2, y2);
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+
+      // Stamp persistent tire marks or gravel ruts directly onto the offscreen canvas
+      stampTireMark(x1, y1, x2, y2, surface, alpha) {
+        const ctx = this.ctx;
+        ctx.save();
+        ctx.lineCap = 'round';
+        ctx.lineWidth = surface === 'gravel' ? 5.0 : 3.4;
+        if (surface === 'gravel') {
+          ctx.strokeStyle = `rgba(116, 95, 72, ${Math.min(0.62, alpha * 0.72)})`;
+        } else {
+          ctx.strokeStyle = `rgba(20, 20, 18, ${Math.min(0.68, alpha * 0.75)})`;
+        }
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+
+    class RallyCar {
+      constructor() {
+        this.reset(0, 0, 0);
+      }
+
+      reset(x, y, angle) {
+        this.x = x;
+        this.y = y;
+        this.vx = 0;
+        this.vy = 0;
+        this.angle = angle;
+        this.angularVel = 0;
+        this.steer = 0;
+        this.braking = false;
+        this.reversing = false;
+        this.brakeHoldTimer = 0;
+        this.driftAngle = 0;
+        this.surface = 'tarmac';
+        this.dirtBlend = 0;
+        this.slipAngle = 0;
+        this.speed = 0;
+        this.gear = 1;
+        this.rpm = 0.2;
+        this.closestSampleIdx = 5;
+        this.prevRearLeft = null;
+        this.prevRearRight = null;
+        this.prevFrontLeft = null;
+        this.prevFrontRight = null;
+      }
+
+      update(dt, input, world, particles, audio) {
+        // 1. Determine current track surface, transition blend & nearest spline index
+        let bestDist = Infinity;
+        let bestIdx = this.closestSampleIdx;
+        const searchStart = Math.max(0, this.closestSampleIdx - 35);
+        const searchEnd = Math.min(world.samples.length - 1, this.closestSampleIdx + 55);
+
+        for (let i = searchStart; i <= searchEnd; i++) {
+          const s = world.samples[i];
+          const d = Math.hypot(this.x - s.x, this.y - s.y);
+          if (d < bestDist) {
+            bestDist = d;
+            bestIdx = i;
+          }
+        }
+        if (bestDist > 280) {
+          for (let i = 0; i < world.samples.length; i += 2) {
+            const s = world.samples[i];
+            const d = Math.hypot(this.x - s.x, this.y - s.y);
+            if (d < bestDist) {
+              bestDist = d;
+              bestIdx = i;
+            }
+          }
+        }
+
+        const prevSurface = this.surface;
+        this.closestSampleIdx = bestIdx;
+        const currentSample = world.samples[bestIdx];
+        const onRibbon = bestDist <= currentSample.w * 0.56;
+        this.surface = onRibbon ? currentSample.surface : 'offtrack';
+        this.dirtBlend = onRibbon ? currentSample.dirtBlend : 1.0;
+
+        // Subtle tactile camera nudge when crossing between asphalt and loose dirt
+        if (prevSurface !== this.surface && this.speed > 130 && onRibbon) {
+          game.triggerCameraImpulse((Math.random() - 0.5) * 3.2, (Math.random() - 0.5) * 3.2);
+        }
+
+        // 2. Responsive steering input & yaw rotation BEFORE velocity projection
+        const targetSteer = (input.right ? 1 : 0) - (input.left ? 1 : 0);
+        const steerRate = targetSteer !== 0 ? 12.0 : 15.0;
+        this.steer += (targetSteer - this.steer) * Math.min(1, steerRate * dt);
+        this.braking = Boolean(input.brake);
+
+        this.speed = Math.hypot(this.vx, this.vy);
+        const blend = this.dirtBlend;
+
+        // Angular rotation (strictly driven by steering and surface, untouched by braking)
+        const speedFactor = Math.min(1, this.speed / 55);
+        const yawAuthority = 3.35 * (1 - blend) + 3.95 * blend;
+        const highSpeedStability = 1 - Math.min(0.22, this.speed / 1250);
+        const reverseDir = this.reversing ? -1 : 1;
+        const targetAngVel = this.steer * yawAuthority * speedFactor * highSpeedStability * reverseDir;
+
+        const yawResponse = 14.5 * (1 - blend) + 11.5 * blend;
+        this.angularVel += (targetAngVel - this.angularVel) * Math.min(1, yawResponse * dt);
+        this.angle += this.angularVel * dt;
+
+        // 3. Project world velocity into the rotated chassis frame (true centripetal slip!)
+        const cosA = Math.cos(this.angle);
+        const sinA = Math.sin(this.angle);
+        let forwardVel = this.vx * cosA + this.vy * sinA;
+        let lateralVel = -this.vx * sinA + this.vy * cosA;
+
+        // 4. Lively Group 4 Auto-Throttle + Pure Mechanical Braking -> Full Stop -> Reverse
+        const maxSpeed = this.surface === 'offtrack'
+          ? 265
+          : 495 * (1 - blend) + 445 * blend;
+        const engineForce = this.surface === 'offtrack'
+          ? 330
+          : 565 * (1 - blend) + 505 * blend;
+
+        if (this.braking) {
+          const brakeDecel = this.surface === 'offtrack' ? 420 : (540 * (1 - blend) + 450 * blend);
+          if (forwardVel > 6) {
+            // Braking down to a full stop
+            forwardVel = Math.max(0, forwardVel - brakeDecel * dt);
+            this.reversing = false;
+            this.brakeHoldTimer = 0;
+          } else {
+            // Stopped while still holding brake: brief 0.12s pause then engage Reverse gear
+            this.brakeHoldTimer += dt;
+            if (this.brakeHoldTimer < 0.12 && !this.reversing) {
+              forwardVel = 0;
+            } else {
+              this.reversing = true;
+              const maxReverseSpeed = -165;
+              const reverseAccel = 280;
+              forwardVel = Math.max(maxReverseSpeed, forwardVel - reverseAccel * dt);
+            }
+          }
+        } else {
+          this.brakeHoldTimer = 0;
+          if (forwardVel < 0) {
+            // Releasing brake while reversing quickly decelerates back into 1st gear
+            forwardVel = Math.min(0, forwardVel + 620 * dt);
+            this.reversing = forwardVel < -5;
+          } else {
+            this.reversing = false;
+            const speedRatio = Math.min(1, Math.max(0, forwardVel / maxSpeed));
+            const torqueCurve = Math.max(0.22, 1.06 - speedRatio * 0.82);
+            forwardVel += engineForce * torqueCurve * dt;
+          }
+        }
+
+        // 5. Authentic Slip-Angle Drifting Physics (Independent of braking)
+        const tarmacLateralGrip = 4.25;
+        const gravelLateralGrip = 1.50;
+        let lateralGrip = this.surface === 'offtrack'
+          ? 1.35
+          : tarmacLateralGrip * (1 - blend) + gravelLateralGrip * blend;
+
+        const absSteer = Math.abs(this.steer);
+        if (absSteer > 0.1 && forwardVel > 75) {
+          // Breaking rear traction under hard steering
+          const gripRelease = 0.64 * (1 - blend) + 0.48 * blend;
+          lateralGrip *= gripRelease;
+
+          // Rear-wheel-drive pendulum kick
+          const pendulumKick = (88 * (1 - blend) + 158 * blend) * Math.min(1.2, this.speed / 260);
+          lateralVel -= this.steer * pendulumKick * dt;
+        }
+
+        // Apply lateral tire bite
+        lateralVel -= lateralVel * Math.min(1, lateralGrip * dt);
+
+        // Clamp extreme 90-degree spinouts so drifts feel controllable
+        const maxLateral = Math.max(95, Math.abs(forwardVel) * (0.64 * (1 - blend) + 0.90 * blend));
+        if (Math.abs(lateralVel) > maxLateral) {
+          lateralVel = Math.sign(lateralVel) * maxLateral;
+        }
+
+        // Rolling drag + natural cornering scrub
+        const slideRatio = Math.min(1, Math.abs(lateralVel) / 185);
+        const baseDrag = this.surface === 'offtrack' ? 1.15 : (0.21 * (1 - blend) + 0.27 * blend);
+        const driftScrubDrag = slideRatio * (0.38 * (1 - blend) + 0.32 * blend);
+        forwardVel -= forwardVel * Math.min(1, (baseDrag + driftScrubDrag) * dt);
+
+        // Track visual drift angle (angle between chassis nose and actual velocity vector)
+        this.driftAngle = Math.atan2(lateralVel, Math.max(40, Math.abs(forwardVel)));
+
+        // 6. Reconstruct world velocity along the current chassis axes
+        this.vx = forwardVel * cosA - lateralVel * sinA;
+        this.vy = forwardVel * sinA + lateralVel * cosA;
+        this.speed = Math.hypot(this.vx, this.vy);
+
+        this.x += this.vx * dt;
+        this.y += this.vy * dt;
+
+        // 7. Smooth Roadside Bollard Deflection (Firm scrape instead of pinball bounce)
+        for (const b of world.barriers) {
+          const dx = this.x - b.x;
+          const dy = this.y - b.y;
+          const dist = Math.hypot(dx, dy);
+          const minDist = b.r + 13;
+          if (dist < minDist && dist > 0.001) {
+            const nx = dx / dist;
+            const ny = dy / dist;
+            this.x = b.x + nx * minDist;
+            this.y = b.y + ny * minDist;
+            const vn = this.vx * nx + this.vy * ny;
+            if (vn < 0) {
+              this.vx -= 1.15 * vn * nx;
+              this.vy -= 1.15 * vn * ny;
+              this.vx *= 0.84;
+              this.vy *= 0.84;
+              audio.playImpact();
+              game.triggerCameraImpulse(-nx * 4.0, -ny * 4.0);
+            }
+          }
+        }
+
+        // 8. Calculate Slip Intensity, Gears (R / 1-5), Persistent Drift Marks & Rooster Tails
+        const slipThreshold = 110 * (1 - blend) + 68 * blend;
+        this.slipAngle = Math.min(1, Math.abs(lateralVel) / slipThreshold);
+
+        const normSpeed = Math.min(1, Math.max(0, this.speed / 480));
+        if (this.reversing) {
+          this.gear = 'R';
+          this.rpm = Math.min(0.85, 0.3 + (this.speed / 165) * 0.55);
+        } else {
+          const numGear = Math.min(5, 1 + Math.floor(normSpeed * 4.9));
+          this.gear = numGear;
+          const gearSpan = 1 / 5;
+          const gearProgress = (normSpeed - (numGear - 1) * gearSpan) / gearSpan;
+          this.rpm = Math.min(1, Math.max(0.22, 0.35 + gearProgress * 0.65));
+        }
+
+        audio.update(this.rpm, Math.max(this.slipAngle, (this.braking && !this.reversing && this.speed > 40) ? 0.45 : 0), this.surface, normSpeed);
+
+        // Wheel world positions for persistent drift tracks
+        const rearOffset = -14;
+        const frontOffset = 12;
+        const rearTrackHalf = 9.0;
+        const frontTrackHalf = 8.2;
+
+        const rlX = this.x + cosA * rearOffset - sinA * rearTrackHalf;
+        const rlY = this.y + sinA * rearOffset + cosA * rearTrackHalf;
+        const rrX = this.x + cosA * rearOffset + sinA * rearTrackHalf;
+        const rrY = this.y + sinA * rearOffset - cosA * rearTrackHalf;
+
+        const flX = this.x + cosA * frontOffset - sinA * frontTrackHalf;
+        const flY = this.y + sinA * frontOffset + cosA * frontTrackHalf;
+        const frX = this.x + cosA * frontOffset + sinA * frontTrackHalf;
+        const frY = this.y + sinA * frontOffset - cosA * frontTrackHalf;
+
+        const shouldLeaveMark =
+          (this.braking && this.speed > 70) ||
+          (this.surface === 'gravel' && this.speed > 65 && this.slipAngle > 0.14) ||
+          (this.surface === 'tarmac' && this.speed > 95 && this.slipAngle > 0.22) ||
+          (this.surface === 'offtrack' && this.speed > 50);
+
+        if (shouldLeaveMark && this.prevRearLeft) {
+          const alpha = Math.min(1, 0.25 + this.slipAngle * 0.85);
+          world.stampTireMark(this.prevRearLeft.x, this.prevRearLeft.y, rlX, rlY, this.surface, alpha);
+          world.stampTireMark(this.prevRearRight.x, this.prevRearRight.y, rrX, rrY, this.surface, alpha);
+
+          if (this.slipAngle > 0.38 && this.prevFrontLeft) {
+            world.stampTireMark(this.prevFrontLeft.x, this.prevFrontLeft.y, flX, flY, this.surface, alpha * 0.6);
+            world.stampTireMark(this.prevFrontRight.x, this.prevFrontRight.y, frX, frY, this.surface, alpha * 0.6);
+          }
+        }
+
+        this.prevRearLeft = { x: rlX, y: rlY };
+        this.prevRearRight = { x: rrX, y: rrY };
+        this.prevFrontLeft = { x: flX, y: flY };
+        this.prevFrontRight = { x: frX, y: frY };
+
+        // Emit tactile gravel rooster-tails on dirt or tire smoke puffs on hard tarmac drifts
+        if ((this.surface === 'gravel' || this.surface === 'offtrack') && this.speed > 60) {
+          const spawnChance = 0.5 + this.slipAngle * 0.5;
+          if (Math.random() < spawnChance) {
+            const kickSpeed = (45 + this.slipAngle * 75) * (this.reversing ? -0.6 : 1);
+            particles.spawn(rlX, rlY, -cosA * kickSpeed + (Math.random() - 0.5) * 45, -sinA * kickSpeed + (Math.random() - 0.5) * 45, this.surface, this.slipAngle);
+            particles.spawn(rrX, rrY, -cosA * kickSpeed + (Math.random() - 0.5) * 45, -sinA * kickSpeed + (Math.random() - 0.5) * 45, this.surface, this.slipAngle);
+          }
+        } else if (this.surface === 'tarmac' && this.slipAngle > 0.25 && Math.random() < 0.65) {
+          particles.spawn(rlX, rlY, -cosA * 32 + (Math.random() - 0.5) * 24, -sinA * 32 + (Math.random() - 0.5) * 24, 'tarmac', this.slipAngle);
+          particles.spawn(rrX, rrY, -cosA * 32 + (Math.random() - 0.5) * 24, -sinA * 32 + (Math.random() - 0.5) * 24, 'tarmac', this.slipAngle);
+        }
+      }
+    }
+
+    class ParticleSystem {
+      constructor() {
+        this.list = [];
+      }
+
+      spawn(x, y, vx, vy, surface, slipIntensity = 0.3) {
+        if (this.list.length > 120) this.list.shift();
+        let color = PALETTE.gravelDark;
+        if (surface === 'gravel') {
+          color = Math.random() > 0.45 ? PALETTE.paperDark : PALETTE.gravelDark;
+        } else if (surface === 'tarmac') {
+          color = PALETTE.cream;
+        }
+        this.list.push({
+          x,
+          y,
+          vx,
+          vy,
+          life: 0,
+          maxLife: 0.26 + Math.random() * 0.24 + slipIntensity * 0.12,
+          size: 3 + Math.random() * 4.5 + slipIntensity * 2.5,
+          color
+        });
+      }
+
+      update(dt) {
+        for (let i = this.list.length - 1; i >= 0; i--) {
+          const p = this.list[i];
+          p.life += dt;
+          if (p.life >= p.maxLife) {
+            this.list.splice(i, 1);
+            continue;
+          }
+          p.x += p.vx * dt;
+          p.y += p.vy * dt;
+          p.vx *= 0.92;
+          p.vy *= 0.92;
+        }
+      }
+
+      draw(ctx) {
+        for (const p of this.list) {
+          const ratio = 1 - p.life / p.maxLife;
+          const s = p.size * (0.6 + (1 - ratio) * 0.7);
+          ctx.fillStyle = p.color;
+          ctx.strokeStyle = PALETTE.ink;
+          ctx.lineWidth = 1;
+          ctx.fillRect(p.x - s * 0.5, p.y - s * 0.5, s, s);
+        }
+      }
+    }
+
+    class RallyGame {
+      constructor() {
+        this.canvas = document.getElementById('gameCanvas');
+        this.ctx = this.canvas.getContext('2d');
+        this.world = new StageWorld();
+        this.car = new RallyCar();
+        this.particles = new ParticleSystem();
+        this.audio = new RallyAudio();
+
+        this.currentStage = 0;
+        this.state = 'ready'; // 'ready' | 'running' | 'finished'
+        this.runTime = 0;
+        this.lastSplitTime = 0;
+        this.sectorTimes = [null, null, null];
+        this.bestRecords = new Array(STAGES.length).fill(null);
+
+        // Ghost Recording at 20Hz
+        this.currentGhost = [];
+        this.ghostSampleTimer = 0;
+
+        // Input state (Left / Right Steering + Hold-Both Brake)
+        this.keys = { left: false, right: false, brake: false };
+        this.touches = new Map();
+        this.input = { left: false, right: false, brake: false };
+        this.hasInteracted = false;
+
+        // Camera state with velocity lead and micro-impulse
+        this.cam = { x: 0, y: 0, impulseX: 0, impulseY: 0 };
+
+        this.setupEvents();
+        this.resize();
+        this.loadStage(0);
+      }
+
+      setupEvents() {
+        window.addEventListener('resize', () => this.resize());
+
+        // Unlock Web Audio automatically on the very first user gesture anywhere
+        const unlockAudioOnce = () => {
+          this.audio.unlock();
+        };
+        window.addEventListener('pointerdown', unlockAudioOnce, { passive: true });
+        window.addEventListener('touchstart', unlockAudioOnce, { passive: true });
+        window.addEventListener('keydown', unlockAudioOnce, { passive: true });
+
+        // Keyboard Controls
+        window.addEventListener('keydown', (e) => {
+          if (e.code === 'ArrowLeft' || e.code === 'KeyA') this.keys.left = true;
+          if (e.code === 'ArrowRight' || e.code === 'KeyD') this.keys.right = true;
+          if (e.code === 'Space' || e.code === 'ArrowDown' || e.code === 'KeyS') {
+            this.keys.brake = true;
+          }
+          if (e.code === 'KeyR') this.restartStage();
+          if (e.code === 'KeyM') this.toggleAudio();
+          this.syncInput();
+        });
+
+        window.addEventListener('keyup', (e) => {
+          if (e.code === 'ArrowLeft' || e.code === 'KeyA') this.keys.left = false;
+          if (e.code === 'ArrowRight' || e.code === 'KeyD') this.keys.right = false;
+          if (e.code === 'Space' || e.code === 'ArrowDown' || e.code === 'KeyS') {
+            this.keys.brake = false;
+          }
+          this.syncInput();
+        });
+
+        // Split-Screen Native Touch Controls (Left = Steer L, Right = Steer R, Hold Both = Brake / Reverse)
+        const handleTouch = (e) => {
+          e.preventDefault();
+          this.audio.unlock();
+          const rect = this.canvas.getBoundingClientRect();
+          const midX = rect.width * 0.5;
+          this.touches.clear();
+
+          for (let i = 0; i < e.touches.length; i++) {
+            const t = e.touches[i];
+            const side = t.clientX < midX ? 'left' : 'right';
+            this.touches.set(t.identifier, side);
+          }
+          this.syncInput();
+        };
+
+        this.canvas.addEventListener('touchstart', handleTouch, { passive: false });
+        this.canvas.addEventListener('touchmove', handleTouch, { passive: false });
+        this.canvas.addEventListener('touchend', handleTouch, { passive: false });
+        this.canvas.addEventListener('touchcancel', handleTouch, { passive: false });
+
+        // UI Button Listeners
+        document.getElementById('stageMenuBtn').addEventListener('click', () => {
+          document.getElementById('stageModal').classList.remove('hidden');
+        });
+        document.getElementById('closeModalBtn').addEventListener('click', () => {
+          this.audio.unlock();
+          document.getElementById('stageModal').classList.add('hidden');
+        });
+        document.getElementById('startStageBtn').addEventListener('click', () => {
+          this.audio.unlock();
+          this.audio.playStartChime();
+          document.getElementById('stageModal').classList.add('hidden');
+        });
+        document.getElementById('restartBtn').addEventListener('click', () => this.restartStage());
+        document.getElementById('audioBtn').addEventListener('click', () => this.toggleAudio());
+
+        document.getElementById('retryStageBtn').addEventListener('click', () => {
+          document.getElementById('finishOverlay').classList.add('hidden');
+          this.restartStage();
+        });
+        document.getElementById('nextStageBtn').addEventListener('click', () => {
+          document.getElementById('finishOverlay').classList.add('hidden');
+          const nextIdx = (this.currentStage + 1) % STAGES.length;
+          this.loadStage(nextIdx);
+          document.querySelectorAll('.stage-option').forEach((b, i) => {
+            b.classList.toggle('active-stage', i === nextIdx);
+          });
+        });
+
+        document.querySelectorAll('.stage-option').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            const idx = parseInt(btn.getAttribute('data-stage'), 10);
+            this.loadStage(idx);
+            document.querySelectorAll('.stage-option').forEach((b) => b.classList.remove('active-stage'));
+            btn.classList.add('active-stage');
+          });
+        });
+      }
+
+      syncInput() {
+        let touchLeft = false;
+        let touchRight = false;
+
+        for (const side of this.touches.values()) {
+          if (side === 'left') touchLeft = true;
+          if (side === 'right') touchRight = true;
+        }
+
+        const rawLeft = this.keys.left || touchLeft;
+        const rawRight = this.keys.right || touchRight;
+        const holdBoth = rawLeft && rawRight;
+
+        // Holding both sides strictly brakes in a straight line without pulling steering
+        this.input.brake = holdBoth || this.keys.brake;
+        this.input.left = holdBoth ? false : rawLeft;
+        this.input.right = holdBoth ? false : rawRight;
+
+        // Visual feedback on bottom corner brackets & brake badge
+        const leftInd = document.getElementById('leftTouchIndicator');
+        const rightInd = document.getElementById('rightTouchIndicator');
+        const brakeInd = document.getElementById('brakeTouchIndicator');
+
+        leftInd.style.backgroundColor = rawLeft ? PALETTE.terracotta : 'rgba(234, 228, 220, 0.75)';
+        leftInd.style.color = rawLeft ? PALETTE.cream : PALETTE.ink;
+        rightInd.style.backgroundColor = rawRight ? PALETTE.terracotta : 'rgba(234, 228, 220, 0.75)';
+        rightInd.style.color = rawRight ? PALETTE.cream : PALETTE.ink;
+
+        if (brakeInd) {
+          brakeInd.style.backgroundColor = this.input.brake ? PALETTE.terracotta : 'transparent';
+          brakeInd.style.color = this.input.brake ? PALETTE.cream : PALETTE.ink;
+          brakeInd.style.opacity = this.input.brake ? '1' : '0.7';
+        }
+
+        if (!this.hasInteracted && (rawLeft || rawRight || this.input.brake)) {
+          this.hasInteracted = true;
+          document.getElementById('touchHints').style.opacity = '0.45';
+        }
+      }
+
+      toggleAudio() {
+        const on = this.audio.toggle();
+        const btn = document.getElementById('audioBtn');
+        btn.textContent = on ? 'SOUND:ON' : 'SOUND:OFF';
+        btn.style.backgroundColor = on ? PALETTE.pine : PALETTE.cream;
+        btn.style.color = on ? PALETTE.cream : PALETTE.ink;
+      }
+
+      resize() {
+        const dpr = Math.min(2, window.devicePixelRatio || 1);
+        this.canvas.width = window.innerWidth * dpr;
+        this.canvas.height = window.innerHeight * dpr;
+        this.dpr = dpr;
+      }
+
+      loadStage(index) {
+        this.currentStage = index;
+        this.world.build(index);
+        const st = STAGES[index];
+        document.getElementById('stageCodeLabel').textContent = st.code;
+        document.getElementById('stageNameLabel').textContent = st.name;
+        this.restartStage();
+      }
+
+      restartStage() {
+        // Re-bake clean track surface so fresh run starts with clean gravel/tarmac
+        this.world.bakeCanvas();
+        const pose = this.world.startPose;
+        this.car.reset(pose.x, pose.y, pose.angle);
+        this.particles.list = [];
+        this.cam.x = pose.x;
+        this.cam.y = pose.y;
+        this.runTime = 0;
+        this.lastSplitTime = 0;
+        this.sectorTimes = [null, null, null];
+        this.currentGhost = [];
+        this.ghostSampleTimer = 0;
+        this.state = 'running';
+        this.updateHUD();
+      }
+
+      triggerCameraImpulse(ix, iy) {
+        this.cam.impulseX = ix;
+        this.cam.impulseY = iy;
+      }
+
+      stepPhysics(dt) {
+        const modalOpen = !document.getElementById('stageModal').classList.contains('hidden');
+        if (modalOpen || this.state !== 'running') {
+          this.audio.update(0.15, 0, 'tarmac', 0);
+          return;
+        }
+
+        this.runTime += dt;
+        this.car.update(dt, this.input, this.world, this.particles, this.audio);
+        this.particles.update(dt);
+
+        // Record ghost frame at 20Hz
+        this.ghostSampleTimer += dt;
+        if (this.ghostSampleTimer >= 0.05) {
+          this.ghostSampleTimer -= 0.05;
+          this.currentGhost.push({
+            x: this.car.x,
+            y: this.car.y,
+            a: this.car.angle
+          });
+        }
+
+        // Check Sector Splits & Finish Gate
+        const idx = this.car.closestSampleIdx;
+        const sIndices = this.world.sectorIndices;
+
+        if (this.sectorTimes[0] === null && idx >= sIndices[0]) {
+          const splitDuration = this.runTime - this.lastSplitTime;
+          this.lastSplitTime = this.runTime;
+          this.sectorTimes[0] = splitDuration;
+          this.updateSectorBox(0, splitDuration);
+        }
+        if (this.sectorTimes[0] !== null && this.sectorTimes[1] === null && idx >= sIndices[1]) {
+          const splitDuration = this.runTime - this.lastSplitTime;
+          this.lastSplitTime = this.runTime;
+          this.sectorTimes[1] = splitDuration;
+          this.updateSectorBox(1, splitDuration);
+        }
+        if (this.sectorTimes[1] !== null && this.sectorTimes[2] === null && idx >= sIndices[2]) {
+          const splitDuration = this.runTime - this.lastSplitTime;
+          this.lastSplitTime = this.runTime;
+          this.sectorTimes[2] = splitDuration;
+          this.updateSectorBox(2, splitDuration);
+          this.completeStage();
+        }
+
+        // Camera Lead: looks ahead along velocity vector so hairpins are visible early
+        const leadX = this.car.x + this.car.vx * 0.27;
+        const leadY = this.car.y + this.car.vy * 0.27;
+        this.cam.x += (leadX - this.cam.x) * Math.min(1, 7.8 * dt);
+        this.cam.y += (leadY - this.cam.y) * Math.min(1, 7.8 * dt);
+        this.cam.impulseX *= 0.86;
+        this.cam.impulseY *= 0.86;
+      }
+
+      completeStage() {
+        this.state = 'finished';
+        const prevBest = this.bestRecords[this.currentStage];
+        const isNewRecord = !prevBest || this.runTime < prevBest.time;
+
+        if (isNewRecord) {
+          this.bestRecords[this.currentStage] = {
+            time: this.runTime,
+            sectors: [...this.sectorTimes],
+            ghost: [...this.currentGhost]
+          };
+          document.getElementById(`modalBest${this.currentStage}`).textContent = this.formatTime(this.runTime);
+        }
+
+        document.getElementById('newRecordBadge').classList.toggle('hidden', !isNewRecord);
+        document.getElementById('finishTimeVal').textContent = this.formatTime(this.runTime);
+        document.getElementById('finishBestVal').textContent = this.formatTime(this.bestRecords[this.currentStage].time);
+        document.getElementById('finishOverlay').classList.remove('hidden');
+        this.updateHUD();
+      }
+
+      formatTime(sec) {
+        if (sec === null || sec === undefined) return '--:--.--';
+        const mins = Math.floor(sec / 60);
+        const rem = sec % 60;
+        const whole = Math.floor(rem);
+        const hundredths = Math.floor((rem - whole) * 100);
+        return `${String(mins).padStart(2, '0')}:${String(whole).padStart(2, '0')}.${String(hundredths).padStart(2, '0')}`;
+      }
+
+      updateSectorBox(sectorIdx, timeVal) {
+        const box = document.getElementById(`sector${sectorIdx + 1}Box`);
+        const best = this.bestRecords[this.currentStage];
+        box.textContent = `S${sectorIdx + 1} ${timeVal.toFixed(1)}s`;
+        if (best && best.sectors[sectorIdx]) {
+          const faster = timeVal <= best.sectors[sectorIdx];
+          box.style.backgroundColor = faster ? PALETTE.pine : PALETTE.terracotta;
+          box.style.color = PALETTE.cream;
+        } else {
+          box.style.backgroundColor = PALETTE.asphalt;
+          box.style.color = PALETTE.cream;
+        }
+      }
+
+      updateHUD() {
+        document.getElementById('currentTimeLabel').textContent = this.formatTime(this.runTime);
+        const best = this.bestRecords[this.currentStage];
+        document.getElementById('bestTimeLabel').textContent = best ? this.formatTime(best.time) : '--:--.--';
+
+        if (this.runTime === 0) {
+          for (let i = 1; i <= 3; i++) {
+            const box = document.getElementById(`sector${i}Box`);
+            box.textContent = `S${i} --.--`;
+            box.style.backgroundColor = PALETTE.cream;
+            box.style.color = PALETTE.ink;
+          }
+        }
+
+        const kmh = Math.round(this.car.speed * 0.39);
+        document.getElementById('speedLabel').textContent = `${String(kmh).padStart(3, '0')} KM/H`;
+        document.getElementById('gearLabel').textContent = this.car.gear === 'R' ? 'REV' : `G${this.car.gear}`;
+
+        const surfEl = document.getElementById('surfaceBadge');
+        const isDrifting = this.car.slipAngle > 0.24 && this.car.speed > 80;
+        if (this.car.surface === 'tarmac') {
+          surfEl.textContent = isDrifting ? 'TARMAC • SLIDE' : 'TARMAC';
+          surfEl.style.color = isDrifting ? PALETTE.terracotta : PALETTE.ink;
+        } else if (this.car.surface === 'gravel') {
+          surfEl.textContent = isDrifting ? 'DIRT • DRIFT' : 'LOOSE DIRT';
+          surfEl.style.color = PALETTE.terracotta;
+        } else {
+          surfEl.textContent = 'OFF-TRACK';
+          surfEl.style.color = PALETTE.terracotta;
+        }
+      }
+
+      render() {
+        const ctx = this.ctx;
+        const w = this.canvas.width;
+        const h = this.canvas.height;
+
+        ctx.save();
+        ctx.fillStyle = PALETTE.paper;
+        ctx.fillRect(0, 0, w, h);
+
+        // Responsive zoom level with subtle high-speed FOV pull-back so corners stay readable
+        const minDim = Math.min(window.innerWidth, window.innerHeight);
+        const baseScale = minDim < 500 ? 0.72 : 0.86;
+        const speedPullback = 1 - Math.min(0.1, (this.car.speed / 640) * 0.1);
+        const zoom = this.dpr * baseScale * speedPullback;
+
+        ctx.translate(w * 0.5, h * 0.5);
+        ctx.scale(zoom, zoom);
+        ctx.translate(-(this.cam.x + this.cam.impulseX), -(this.cam.y + this.cam.impulseY));
+
+        // 1. Draw Baked World & Persistent Skidmarks
+        ctx.drawImage(this.world.canvas, 0, 0);
+
+        // 2. Draw Dust / Gravel Particles
+        this.particles.draw(ctx);
+
+        // 3. Draw Personal Best Blueprint Ghost Car
+        const best = this.bestRecords[this.currentStage];
+        if (best && best.ghost.length > 0 && this.state === 'running') {
+          const ghostIdx = Math.min(best.ghost.length - 1, Math.floor(this.runTime * 20));
+          const g = best.ghost[ghostIdx];
+          if (g) {
+            this.drawGhostCar(ctx, g.x, g.y, g.a);
+          }
+        }
+
+        // 4. Draw Player Group 4 Rally Car
+        this.drawRallyCar(ctx, this.car);
+
+        ctx.restore();
+      }
+
+      drawGhostCar(ctx, x, y, angle) {
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(angle);
+        ctx.strokeStyle = PALETTE.cream;
+        ctx.lineWidth = 1.8;
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        ctx.moveTo(-20, -11);
+        ctx.lineTo(14, -10);
+        ctx.lineTo(22, -6);
+        ctx.lineTo(22, 6);
+        ctx.lineTo(14, 10);
+        ctx.lineTo(-20, 11);
+        ctx.closePath();
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      drawRallyCar(ctx, car) {
+        ctx.save();
+        ctx.translate(car.x, car.y);
+        ctx.rotate(car.angle);
+
+        // 1. Hard-edged Risograph print drop shadow beneath chassis
+        ctx.fillStyle = PALETTE.ink;
+        ctx.beginPath();
+        ctx.moveTo(-18, -9);
+        ctx.lineTo(15, -8);
+        ctx.lineTo(23, -4);
+        ctx.lineTo(23, 8);
+        ctx.lineTo(15, 12);
+        ctx.lineTo(-18, 13);
+        ctx.closePath();
+        ctx.fill();
+
+        // 2. Four Wide Rally Tires (Front wheels articulate with steering + counter-steer)
+        ctx.fillStyle = PALETTE.ink;
+        // Rear Wide Tires
+        ctx.fillRect(-16, -13.5, 9, 4.5);
+        ctx.fillRect(-16, 9, 9, 4.5);
+
+        // Front Tires (turn with steering input and slightly counter-steer into deep drifts)
+        const wheelAngle = car.steer * 0.44 - car.driftAngle * 0.25;
+        ctx.save();
+        ctx.translate(12, -11);
+        ctx.rotate(wheelAngle);
+        ctx.fillRect(-4.5, -2.2, 9, 4.4);
+        ctx.restore();
+
+        ctx.save();
+        ctx.translate(12, 11);
+        ctx.rotate(wheelAngle);
+        ctx.fillRect(-4.5, -2.2, 9, 4.4);
+        ctx.restore();
+
+        // 3. Sculpted 1970s Group 4 Widebody Chassis (Lancia Stratos / Alpine Wedge Silhouette)
+        ctx.fillStyle = PALETTE.cream;
+        ctx.strokeStyle = PALETTE.ink;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(-20, -9.5);   // Rear left tail
+        ctx.lineTo(-17, -12);    // Rear left flared fender
+        ctx.lineTo(-7, -12);     // Rear arch taper
+        ctx.lineTo(-4, -9.5);    // Door waist
+        ctx.lineTo(7, -9.5);     // Front arch flare start
+        ctx.lineTo(10, -11.5);   // Front left fender flare
+        ctx.lineTo(16, -10.5);   // Front corner
+        ctx.lineTo(22, -6);      // Tapered wedge nose left
+        ctx.lineTo(22, 6);       // Tapered wedge nose right
+        ctx.lineTo(16, 10.5);    // Front right corner
+        ctx.lineTo(10, 11.5);    // Front right fender flare
+        ctx.lineTo(7, 9.5);      // Door waist right
+        ctx.lineTo(-4, 9.5);
+        ctx.lineTo(-7, 12);      // Rear right flared fender
+        ctx.lineTo(-17, 12);
+        ctx.lineTo(-20, 9.5);    // Rear right tail
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // 4. Terracotta Works Rally Wedge Hood & Racing Stripes
+        ctx.fillStyle = PALETTE.terracotta;
+        ctx.beginPath();
+        ctx.moveTo(4, -7.5);
+        ctx.lineTo(20, -5);
+        ctx.lineTo(20, 5);
+        ctx.lineTo(4, 7.5);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // Deep Recessed Radiator Extractor Vent on Nose
+        ctx.fillStyle = PALETTE.asphalt;
+        ctx.fillRect(10, -4, 5, 8);
+
+        // 5. Wrap-Around Helmet Visor Windshield & Side Windows
+        ctx.fillStyle = PALETTE.asphalt;
+        ctx.strokeStyle = PALETTE.ink;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(4, -7);
+        ctx.lineTo(7.5, -5);
+        ctx.lineTo(7.5, 5);
+        ctx.lineTo(4, 7);
+        ctx.lineTo(-1, 6);
+        ctx.lineTo(-1, -6);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // Roof Panel with Number Roundel (#14) & Terracotta Center Stripe
+        ctx.fillStyle = PALETTE.terracotta;
+        ctx.fillRect(-9, -2.2, 8, 4.4);
+
+        ctx.fillStyle = PALETTE.cream;
+        ctx.strokeStyle = PALETTE.ink;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(-4.5, 0, 4.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        // 6. Mid-Engine Slatted Deck Louvers & Rear Ducktail Spoiler
+        ctx.fillStyle = PALETTE.asphalt;
+        for (let lx = -15; lx <= -10; lx += 2.5) {
+          ctx.fillRect(lx, -5.5, 1.5, 11);
+        }
+
+        // Rear Ducktail Wing
+        ctx.fillStyle = PALETTE.terracotta;
+        ctx.strokeStyle = PALETTE.ink;
+        ctx.lineWidth = 1.8;
+        ctx.fillRect(-21, -9.5, 3.5, 19);
+        ctx.strokeRect(-21, -9.5, 3.5, 19);
+
+        // Rear Brake & Reverse Lights (Red when braking, bright cream/white when reversing)
+        if (car.braking) {
+          ctx.fillStyle = car.reversing ? PALETTE.cream : PALETTE.terracotta;
+          ctx.strokeStyle = PALETTE.ink;
+          ctx.lineWidth = 1.2;
+          ctx.fillRect(-22.5, -8.5, 2.2, 4.2);
+          ctx.strokeRect(-22.5, -8.5, 2.2, 4.2);
+          ctx.fillRect(-22.5, 4.3, 2.2, 4.2);
+          ctx.strokeRect(-22.5, 4.3, 2.2, 4.2);
+        }
+
+        // 7. Twin Nose-Mounted Cibie Rally Spotlights
+        ctx.fillStyle = PALETTE.gold;
+        ctx.strokeStyle = PALETTE.ink;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(22, -3.2, 2.3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(22, 3.2, 2.3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.restore();
+      }
+    }
+
+    let game;
+    window.onload = function () {
+      game = new RallyGame();
+
+      const FIXED_DT = 1 / 120;
+      let accumulator = 0;
+      let lastTime = performance.now();
+      let hudCounter = 0;
+
+      function gameLoop(now) {
+        let frameTime = (now - lastTime) / 1000;
+        if (frameTime > 0.1) frameTime = 0.1;
+        lastTime = now;
+
+        accumulator += frameTime;
+        while (accumulator >= FIXED_DT) {
+          game.stepPhysics(FIXED_DT);
+          accumulator -= FIXED_DT;
+        }
+
+        game.render();
+
+        hudCounter++;
+        if (hudCounter % 3 === 0) {
+          game.updateHUD();
+        }
+
+        requestAnimationFrame(gameLoop);
+      }
+
+      requestAnimationFrame(gameLoop);
+    };
+  </script>
+</body>
+</html>
