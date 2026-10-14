@@ -156,25 +156,33 @@
       <!-- Compact Stage List (5 Stages) -->
       <div class="flex flex-col gap-1">
         <button data-stage="0" class="stage-option print-btn active-stage px-2 py-1 text-left flex items-center justify-between">
-          <span class="font-display font-bold text-[11px] sm:text-xs uppercase truncate pr-2">SS1 — Col de Turini <span class="font-normal opacity-80 text-[10px]">• Mixed</span></span>
+          <span class="font-display font-bold text-[11px] sm:text-xs uppercase truncate pr-2">SS1 — Col de Turini <span class="font-normal opacity-80 text-[10px]">• Tarmac / Cracked / Gravel</span></span>
           <span id="modalBest0" class="text-[10px] font-bold tabular-nums shrink-0">--:--.--</span>
         </button>
         <button data-stage="1" class="stage-option print-btn px-2 py-1 text-left flex items-center justify-between">
-          <span class="font-display font-bold text-[11px] sm:text-xs uppercase truncate pr-2">SS2 — Val d'Orcia <span class="font-normal opacity-80 text-[10px]">• Dirt</span></span>
+          <span class="font-display font-bold text-[11px] sm:text-xs uppercase truncate pr-2">SS2 — Val d'Orcia <span class="font-normal opacity-80 text-[10px]">• Packed Dirt / Gravel / Old Tar</span></span>
           <span id="modalBest1" class="text-[10px] font-bold tabular-nums shrink-0">--:--.--</span>
         </button>
         <button data-stage="2" class="stage-option print-btn px-2 py-1 text-left flex items-center justify-between">
-          <span class="font-display font-bold text-[11px] sm:text-xs uppercase truncate pr-2">SS3 — Monte Cassino <span class="font-normal opacity-80 text-[10px]">• Mixed</span></span>
+          <span class="font-display font-bold text-[11px] sm:text-xs uppercase truncate pr-2">SS3 — Monte Cassino <span class="font-normal opacity-80 text-[10px]">• All 4 Surfaces Mixed</span></span>
           <span id="modalBest2" class="text-[10px] font-bold tabular-nums shrink-0">--:--.--</span>
         </button>
         <button data-stage="3" class="stage-option print-btn px-2 py-1 text-left flex items-center justify-between">
-          <span class="font-display font-bold text-[11px] sm:text-xs uppercase truncate pr-2">SS4 — Sanremo Passo <span class="font-normal opacity-80 text-[10px]">• Tarmac</span></span>
+          <span class="font-display font-bold text-[11px] sm:text-xs uppercase truncate pr-2">SS4 — Sanremo Passo <span class="font-normal opacity-80 text-[10px]">• Tarmac / Cracked Asphalt / Dirt</span></span>
           <span id="modalBest3" class="text-[10px] font-bold tabular-nums shrink-0">--:--.--</span>
         </button>
         <button data-stage="4" class="stage-option print-btn px-2 py-1 text-left flex items-center justify-between">
-          <span class="font-display font-bold text-[11px] sm:text-xs uppercase truncate pr-2">SS5 — Acropolis Special <span class="font-normal opacity-80 text-[10px]">• Dirt</span></span>
+          <span class="font-display font-bold text-[11px] sm:text-xs uppercase truncate pr-2">SS5 — Acropolis Special <span class="font-normal opacity-80 text-[10px]">• Loose Gravel / Dirt / Cracked</span></span>
           <span id="modalBest4" class="text-[10px] font-bold tabular-nums shrink-0">--:--.--</span>
         </button>
+      </div>
+
+      <!-- 4-Surface Handling Legend -->
+      <div class="grid grid-cols-4 gap-1 text-[8px] sm:text-[9px] font-bold uppercase text-center">
+        <div class="bg-[#2B2B2A] text-[#F4F1EA] border border-[#1E1E1C] py-0.5 px-1 truncate">TARMAC • MAX GRIP</div>
+        <div class="bg-[#484540] text-[#F4F1EA] border border-[#1E1E1C] py-0.5 px-1 truncate">CRACKED • BUMPY</div>
+        <div class="bg-[#9E7453] text-[#F4F1EA] border border-[#1E1E1C] py-0.5 px-1 truncate">DIRT • LOAMY</div>
+        <div class="bg-[#C4B49F] text-[#1E1E1C] border border-[#1E1E1C] py-0.5 px-1 truncate">GRAVEL • LOOSE</div>
       </div>
 
       <!-- Compact Ergonomic Control Diagram (Left / Hold Both to Brake / Right) -->
@@ -243,12 +251,11 @@
   <script>
     /**
      * TARMAC & GRAVEL — 1970s Swiss Motorsport Rally Trial
-     * Upgraded Architecture:
-     * 1. Strict Sequential 3-Sector Checkpoint Validation (cannot trigger Finish until S1, S2, and S3 checkpoints are completed in order)
-     * 2. Polygon Quad Ribbon Rendering with Feathered Asphalt-to-Dirt Transitions (eliminates round lineCap circles at transitions)
-     * 3. Dynamic Variable Track Widths (narrow village bridges & gorges vs. wide gravel drift bowls)
-     * 4. Multi-Layered Alpine Pines, Scrub Bushes & Boulders with Physical Collisions & Foliage Bursts
-     * 5. Infinite Seamless Topographic Map Background (never ends at canvas edges)
+     * 4 Distinct Surfaces with Custom Textures, Physics & Effects:
+     * 1. TARMAC ('tarmac'): Fresh dark hot-mix asphalt, painted shoulder lines, high grip, sharp turn-in, tire squeal & rubber marks.
+     * 2. OLD / CRACKED ASPHALT ('cracked_tarmac'): Sun-bleached weathered pavement, cold-patch repairs, branching tar cracks, camber bumps & chassis chatter.
+     * 3. PACKED DIRT ('dirt'): Warm sienna/terracotta clay earth, loamy moisture patches, embedded cobbles, progressive medium-grip slides & deep clay ruts.
+     * 4. LOOSE GRAVEL ('gravel'): Pale crushed limestone scree, 3D relief stone chips, stone-ping audio, low lateral grip, wide pendulum drifts & stone rooster-tails.
      */
 
     const PALETTE = {
@@ -258,10 +265,18 @@
       asphalt: '#2B2B2A',
       asphaltRGB: [43, 43, 42],
       asphaltEdge: '#1E1E1C',
-      gravel: '#B8A58E',
-      gravelRGB: [184, 165, 142],
-      gravelDark: '#9F8C75',
-      gravelLight: '#C9B8A3',
+      cracked: '#484540',
+      crackedRGB: [72, 69, 64],
+      crackedDark: '#2E2C29',
+      crackedPatch: '#393733',
+      dirt: '#9E7453',
+      dirtRGB: [158, 116, 83],
+      dirtDark: '#7C573B',
+      dirtLight: '#B68C6A',
+      gravel: '#C4B49F',
+      gravelRGB: [196, 180, 159],
+      gravelDark: '#9B8973',
+      gravelLight: '#DFD2C0',
       terracotta: '#C85A32',
       pine: '#3A5A40',
       pineLight: '#4F7756',
@@ -275,11 +290,99 @@
       gold: '#D99B26'
     };
 
-    function lerpColorRGB(rgb1, rgb2, t) {
-      const r = Math.round(rgb1[0] + (rgb2[0] - rgb1[0]) * t);
-      const g = Math.round(rgb1[1] + (rgb2[1] - rgb1[1]) * t);
-      const b = Math.round(rgb1[2] + (rgb2[2] - rgb1[2]) * t);
-      return `rgb(${r},${g},${b})`;
+    const SURFACE_SPECS = {
+      tarmac: {
+        label: 'TARMAC',
+        slideLabel: 'TARMAC • SLIDE',
+        color: PALETTE.ink,
+        rgb: PALETTE.asphaltRGB,
+        maxSpeed: 505,
+        engineForce: 575,
+        brakeDecel: 585,
+        lateralGrip: 4.55,
+        gripRelease: 0.65,
+        pendulumKick: 84,
+        yawAuthority: 3.30,
+        yawResponse: 15.2,
+        baseDrag: 0.19,
+        driftScrubDrag: 0.39,
+        maxLateralRatio: 0.62,
+        slipThreshold: 112,
+        bumpiness: 0.0
+      },
+      cracked_tarmac: {
+        label: 'OLD ASPHALT',
+        slideLabel: 'CRACKED • BUMPS',
+        color: '#484540',
+        rgb: PALETTE.crackedRGB,
+        maxSpeed: 472,
+        engineForce: 540,
+        brakeDecel: 495,
+        lateralGrip: 3.35,
+        gripRelease: 0.56,
+        pendulumKick: 112,
+        yawAuthority: 3.60,
+        yawResponse: 13.5,
+        baseDrag: 0.24,
+        driftScrubDrag: 0.36,
+        maxLateralRatio: 0.72,
+        slipThreshold: 92,
+        bumpiness: 1.0
+      },
+      dirt: {
+        label: 'PACKED DIRT',
+        slideLabel: 'DIRT • DRIFT',
+        color: '#8C583A',
+        rgb: PALETTE.dirtRGB,
+        maxSpeed: 452,
+        engineForce: 515,
+        brakeDecel: 455,
+        lateralGrip: 2.12,
+        gripRelease: 0.52,
+        pendulumKick: 142,
+        yawAuthority: 3.88,
+        yawResponse: 12.2,
+        baseDrag: 0.26,
+        driftScrubDrag: 0.33,
+        maxLateralRatio: 0.84,
+        slipThreshold: 76,
+        bumpiness: 0.25
+      },
+      gravel: {
+        label: 'LOOSE GRAVEL',
+        slideLabel: 'GRAVEL • SCREE',
+        color: PALETTE.terracotta,
+        rgb: PALETTE.gravelRGB,
+        maxSpeed: 428,
+        engineForce: 488,
+        brakeDecel: 395,
+        lateralGrip: 1.34,
+        gripRelease: 0.45,
+        pendulumKick: 174,
+        yawAuthority: 4.18,
+        yawResponse: 10.8,
+        baseDrag: 0.31,
+        driftScrubDrag: 0.29,
+        maxLateralRatio: 0.94,
+        slipThreshold: 62,
+        bumpiness: 0.45
+      }
+    };
+
+    const SURFACE_KEYS = ['tarmac', 'cracked_tarmac', 'dirt', 'gravel'];
+
+    function blendSurfaceRGB(weights) {
+      let r = 0, g = 0, b = 0;
+      for (const k of SURFACE_KEYS) {
+        const w = weights[k] || 0;
+        if (w > 0) {
+          const rgb = SURFACE_SPECS[k].rgb;
+          r += rgb[0] * w;
+          g += rgb[1] * w;
+          b += rgb[2] * w;
+        }
+      }
+      return `rgb(${Math.round(r)},${Math.round(g)},${Math.round(b)})`;
     }
 
     // Procedural Web Audio Synthesizer (Zero External Assets)
@@ -426,18 +529,33 @@
         this.engineGain.gain.setTargetAtTime(0.11 + rpmRatio * 0.14, now, 0.03);
 
         if (surface === 'gravel') {
-          const gravelGain = Math.min(0.28, speedRatio * 0.11 + slipIntensity * 0.18);
-          this.noiseFilter.frequency.setTargetAtTime(420 + speedRatio * 420 + slipIntensity * 280, now, 0.03);
-          this.noiseFilter.Q.setTargetAtTime(1.1, now, 0.03);
+          // Coarse high-frequency loose scree crunch & stone rattle
+          const gravelGain = Math.min(0.30, speedRatio * 0.13 + slipIntensity * 0.20);
+          this.noiseFilter.frequency.setTargetAtTime(580 + speedRatio * 520 + slipIntensity * 340, now, 0.03);
+          this.noiseFilter.Q.setTargetAtTime(0.95, now, 0.03);
           this.noiseGain.gain.setTargetAtTime(Math.max(0.0001, gravelGain), now, 0.03);
+        } else if (surface === 'dirt') {
+          // Warm loamy clay tear & muted earth scrub
+          const dirtGain = Math.min(0.24, speedRatio * 0.09 + slipIntensity * 0.16);
+          this.noiseFilter.frequency.setTargetAtTime(340 + speedRatio * 290 + slipIntensity * 210, now, 0.03);
+          this.noiseFilter.Q.setTargetAtTime(1.35, now, 0.03);
+          this.noiseGain.gain.setTargetAtTime(Math.max(0.0001, dirtGain), now, 0.03);
+        } else if (surface === 'cracked_tarmac') {
+          // Broken pavement road-chatter flutter + coarse tire scrub
+          const chatter = 0.5 + 0.5 * Math.sin(now * 48);
+          const crackGain = Math.min(0.25, speedRatio * (0.06 + chatter * 0.06) + (slipIntensity > 0.16 ? (slipIntensity - 0.16) * 0.24 : 0));
+          this.noiseFilter.frequency.setTargetAtTime(520 + chatter * 260 + slipIntensity * 380, now, 0.02);
+          this.noiseFilter.Q.setTargetAtTime(2.4, now, 0.03);
+          this.noiseGain.gain.setTargetAtTime(Math.max(0.0001, crackGain), now, 0.025);
         } else if (surface === 'tarmac') {
+          // Pure high-Q resonant tire squeal on smooth asphalt
           const squealGain = slipIntensity > 0.2 ? Math.min(0.22, (slipIntensity - 0.2) * 0.28) : 0.0001;
           this.noiseFilter.frequency.setTargetAtTime(880 + slipIntensity * 420, now, 0.03);
           this.noiseFilter.Q.setTargetAtTime(3.6, now, 0.03);
           this.noiseGain.gain.setTargetAtTime(squealGain, now, 0.03);
         } else {
           const roughGain = Math.min(0.25, speedRatio * 0.16);
-          this.noiseFilter.frequency.setTargetAtTime(300, now, 0.03);
+          this.noiseFilter.frequency.setTargetAtTime(280, now, 0.03);
           this.noiseFilter.Q.setTargetAtTime(0.9, now, 0.03);
           this.noiseGain.gain.setTargetAtTime(Math.max(0.0001, roughGain), now, 0.03);
         }
@@ -477,35 +595,36 @@
     }
 
     /**
-     * 5 Special Stage Definitions with Dramatic Variable Track Widths (`w` from 76px narrow squeezes up to 176px wide drift bowls)
+     * 5 Special Stage Definitions featuring all 4 Surfaces (`tarmac`, `cracked_tarmac`, `dirt`, `gravel`)
+     * and variable track widths (`w` from 78px narrow bridges up to 174px wide drift bowls).
      */
     const STAGES = [
       {
         code: 'SS1',
         name: 'Col de Turini',
-        subtitle: 'Alpine Ascent • Variable Width Switchbacks',
+        subtitle: 'Alpine Ascent • Smooth Tarmac, Cracked Pass & Summit Gravel',
         points: [
           { x: 420, y: 4100, w: 132, surface: 'tarmac', barrier: 'none' },
           { x: 420, y: 3450, w: 118, surface: 'tarmac', barrier: 'left' },
-          { x: 540, y: 2800, w: 92,  surface: 'tarmac', barrier: 'both' }, // Narrow cliff squeeze
-          { x: 1080, y: 2520, w: 124, surface: 'tarmac', barrier: 'left' },
-          { x: 1180, y: 1980, w: 86,  surface: 'tarmac', barrier: 'right' }, // Tight rock pass
+          { x: 540, y: 2800, w: 92,  surface: 'cracked_tarmac', barrier: 'both' }, // Narrow frost-heaved cliff squeeze
+          { x: 1080, y: 2520, w: 124, surface: 'cracked_tarmac', barrier: 'left' },
+          { x: 1180, y: 1980, w: 86,  surface: 'cracked_tarmac', barrier: 'right' }, // Weathered rock pass
           { x: 620, y: 1680, w: 116, surface: 'tarmac', barrier: 'left' },
-          { x: 480, y: 1140, w: 136, surface: 'tarmac', barrier: 'left' },
+          { x: 480, y: 1140, w: 136, surface: 'dirt', barrier: 'left' },
           { x: 960, y: 780, w: 158, surface: 'gravel', barrier: 'right' }, // Opens into wide alpine gravel bowl
           { x: 1620, y: 980, w: 170, surface: 'gravel', barrier: 'left' },
           { x: 1920, y: 520, w: 152, surface: 'gravel', barrier: 'right' },
-          { x: 2580, y: 440, w: 164, surface: 'gravel', barrier: 'left' },
-          { x: 2820, y: 960, w: 128, surface: 'gravel', barrier: 'right' },
-          { x: 2240, y: 1320, w: 114, surface: 'gravel', barrier: 'left' },
-          { x: 2420, y: 1840, w: 96,  surface: 'tarmac', barrier: 'both' }, // Narrow tarmac bridge entry
+          { x: 2580, y: 440, w: 164, surface: 'dirt', barrier: 'left' },
+          { x: 2820, y: 960, w: 128, surface: 'dirt', barrier: 'right' },
+          { x: 2240, y: 1320, w: 114, surface: 'cracked_tarmac', barrier: 'left' },
+          { x: 2420, y: 1840, w: 96,  surface: 'cracked_tarmac', barrier: 'both' }, // Old stone bridge entry
           { x: 3220, y: 1620, w: 118, surface: 'tarmac', barrier: 'left' },
           { x: 3880, y: 1320, w: 88,  surface: 'tarmac', barrier: 'right' }, // Narrow gorge hairpin
           { x: 4120, y: 1880, w: 126, surface: 'tarmac', barrier: 'right' },
-          { x: 3440, y: 2240, w: 104, surface: 'tarmac', barrier: 'left' },
+          { x: 3440, y: 2240, w: 104, surface: 'dirt', barrier: 'left' },
           { x: 3980, y: 2740, w: 156, surface: 'gravel', barrier: 'right' }, // Wide spectator gravel zone
-          { x: 3820, y: 3420, w: 162, surface: 'gravel', barrier: 'right' },
-          { x: 3080, y: 3220, w: 110, surface: 'tarmac', barrier: 'left' },
+          { x: 3820, y: 3420, w: 162, surface: 'dirt', barrier: 'right' },
+          { x: 3080, y: 3220, w: 110, surface: 'cracked_tarmac', barrier: 'left' },
           { x: 2540, y: 3780, w: 94,  surface: 'tarmac', barrier: 'right' },
           { x: 1760, y: 4060, w: 124, surface: 'tarmac', barrier: 'left' },
           { x: 1180, y: 3720, w: 130, surface: 'tarmac', barrier: 'none' }
@@ -514,55 +633,55 @@
       {
         code: 'SS2',
         name: "Val d'Orcia",
-        subtitle: 'Tuscan Endurance • Wide Crests & Narrow Stone Bridges',
+        subtitle: 'Tuscan Endurance • Sienna Clay Dirt, Loose Scree & Old Bridges',
         points: [
-          { x: 640, y: 3980, w: 148, surface: 'gravel', barrier: 'none' },
-          { x: 1240, y: 3680, w: 166, surface: 'gravel', barrier: 'right' }, // Wide farm track
-          { x: 920, y: 3040, w: 122, surface: 'gravel', barrier: 'left' },
-          { x: 460, y: 2480, w: 172, surface: 'gravel', barrier: 'left' },  // Huge sweeping dirt bowl
+          { x: 640, y: 3980, w: 148, surface: 'dirt', barrier: 'none' },
+          { x: 1240, y: 3680, w: 166, surface: 'dirt', barrier: 'right' }, // Wide clay farm track
+          { x: 920, y: 3040, w: 122, surface: 'dirt', barrier: 'left' },
+          { x: 460, y: 2480, w: 172, surface: 'gravel', barrier: 'left' },  // Huge sweeping gravel bowl
           { x: 860, y: 1880, w: 112, surface: 'gravel', barrier: 'right' },
-          { x: 480, y: 1180, w: 154, surface: 'gravel', barrier: 'left' },
-          { x: 980, y: 540, w: 144, surface: 'gravel', barrier: 'left' },
-          { x: 1780, y: 740, w: 116, surface: 'gravel', barrier: 'right' },
-          // Ultra-narrow medieval stone bridge crossing
-          { x: 2220, y: 1280, w: 78,  surface: 'tarmac', barrier: 'both' },
-          { x: 2740, y: 1020, w: 80,  surface: 'tarmac', barrier: 'both' },
+          { x: 480, y: 1180, w: 154, surface: 'dirt', barrier: 'left' },
+          { x: 980, y: 540, w: 144, surface: 'dirt', barrier: 'left' },
+          { x: 1780, y: 740, w: 116, surface: 'dirt', barrier: 'right' },
+          // Ultra-narrow medieval cracked-asphalt bridge crossing
+          { x: 2220, y: 1280, w: 78,  surface: 'cracked_tarmac', barrier: 'both' },
+          { x: 2740, y: 1020, w: 80,  surface: 'cracked_tarmac', barrier: 'both' },
           // Opens back out onto wide Tuscan gravel crests
           { x: 3180, y: 480, w: 162, surface: 'gravel', barrier: 'left' },
           { x: 3940, y: 680, w: 174, surface: 'gravel', barrier: 'right' },
-          { x: 3620, y: 1380, w: 118, surface: 'gravel', barrier: 'left' },
-          { x: 4140, y: 2040, w: 156, surface: 'gravel', barrier: 'right' },
-          { x: 3420, y: 2480, w: 96,  surface: 'gravel', barrier: 'both' }, // Cypress alley pinch
+          { x: 3620, y: 1380, w: 118, surface: 'dirt', barrier: 'left' },
+          { x: 4140, y: 2040, w: 156, surface: 'dirt', barrier: 'right' },
+          { x: 3420, y: 2480, w: 96,  surface: 'dirt', barrier: 'both' }, // Cypress alley pinch
           { x: 3980, y: 3160, w: 160, surface: 'gravel', barrier: 'right' },
           { x: 3580, y: 3940, w: 148, surface: 'gravel', barrier: 'right' },
           { x: 2780, y: 3580, w: 90,  surface: 'tarmac', barrier: 'both' },
-          { x: 2280, y: 4080, w: 142, surface: 'gravel', barrier: 'right' },
-          { x: 1580, y: 4160, w: 146, surface: 'gravel', barrier: 'none' }
+          { x: 2280, y: 4080, w: 142, surface: 'dirt', barrier: 'right' },
+          { x: 1580, y: 4160, w: 146, surface: 'dirt', barrier: 'none' }
         ]
       },
       {
         code: 'SS3',
         name: 'Monte Cassino',
-        subtitle: 'Mixed Technical Pass • Choke Points & Aprons',
+        subtitle: 'Mixed Technical Pass • All 4 Surfaces & Abbey Choke Points',
         points: [
           { x: 2200, y: 4150, w: 128, surface: 'tarmac', barrier: 'none' },
           { x: 1380, y: 4020, w: 104, surface: 'tarmac', barrier: 'left' },
-          { x: 640, y: 3580, w: 86,  surface: 'tarmac', barrier: 'both' },
-          { x: 1080, y: 3020, w: 154, surface: 'gravel', barrier: 'right' },
+          { x: 640, y: 3580, w: 86,  surface: 'cracked_tarmac', barrier: 'both' },
+          { x: 1080, y: 3020, w: 154, surface: 'dirt', barrier: 'right' },
           { x: 520, y: 2480, w: 168, surface: 'gravel', barrier: 'left' },
-          { x: 1180, y: 2060, w: 94,  surface: 'tarmac', barrier: 'right' },
+          { x: 1180, y: 2060, w: 94,  surface: 'cracked_tarmac', barrier: 'right' },
           { x: 620, y: 1420, w: 88,  surface: 'tarmac', barrier: 'left' },
-          { x: 880, y: 680, w: 152, surface: 'gravel', barrier: 'left' },
+          { x: 880, y: 680, w: 152, surface: 'dirt', barrier: 'left' },
           { x: 1680, y: 480, w: 164, surface: 'gravel', barrier: 'right' },
-          { x: 1960, y: 1180, w: 92,  surface: 'tarmac', barrier: 'left' },
-          { x: 2560, y: 620, w: 80,  surface: 'tarmac', barrier: 'both' }, // Abbey gate narrow choke
+          { x: 1960, y: 1180, w: 92,  surface: 'cracked_tarmac', barrier: 'left' },
+          { x: 2560, y: 620, w: 80,  surface: 'cracked_tarmac', barrier: 'both' }, // Abbey gate narrow choke
           { x: 3340, y: 540, w: 158, surface: 'gravel', barrier: 'right' },
-          { x: 3020, y: 1280, w: 148, surface: 'gravel', barrier: 'left' },
+          { x: 3020, y: 1280, w: 148, surface: 'dirt', barrier: 'left' },
           { x: 3880, y: 1120, w: 108, surface: 'tarmac', barrier: 'right' },
-          { x: 4120, y: 1840, w: 90,  surface: 'tarmac', barrier: 'right' },
-          { x: 3360, y: 2180, w: 160, surface: 'gravel', barrier: 'left' },
+          { x: 4120, y: 1840, w: 90,  surface: 'cracked_tarmac', barrier: 'right' },
+          { x: 3360, y: 2180, w: 160, surface: 'dirt', barrier: 'left' },
           { x: 4060, y: 2780, w: 152, surface: 'gravel', barrier: 'right' },
-          { x: 3320, y: 3260, w: 98,  surface: 'tarmac', barrier: 'left' },
+          { x: 3320, y: 3260, w: 98,  surface: 'cracked_tarmac', barrier: 'left' },
           { x: 3860, y: 3920, w: 122, surface: 'tarmac', barrier: 'right' },
           { x: 2980, y: 4080, w: 128, surface: 'tarmac', barrier: 'none' }
         ]
@@ -570,25 +689,25 @@
       {
         code: 'SS4',
         name: 'Sanremo Passo',
-        subtitle: 'Coastal Cliffside • Razor-Thin Gorge & Wide Hairpins',
+        subtitle: 'Coastal Cliffside • Smooth Tarmac, Broken Old Roads & Clay Cuts',
         points: [
           { x: 3980, y: 3980, w: 126, surface: 'tarmac', barrier: 'none' },
           { x: 3960, y: 3120, w: 98,  surface: 'tarmac', barrier: 'right' },
-          { x: 3320, y: 2680, w: 82,  surface: 'tarmac', barrier: 'both' }, // Tight cliffside ledge
-          { x: 4080, y: 2160, w: 134, surface: 'tarmac', barrier: 'right' },
+          { x: 3320, y: 2680, w: 82,  surface: 'cracked_tarmac', barrier: 'both' }, // Tight weathered cliff ledge
+          { x: 4080, y: 2160, w: 134, surface: 'cracked_tarmac', barrier: 'right' },
           { x: 4040, y: 1280, w: 92,  surface: 'tarmac', barrier: 'right' },
           { x: 3420, y: 620, w: 86,  surface: 'tarmac', barrier: 'left' },
-          { x: 2560, y: 880, w: 158, surface: 'gravel', barrier: 'left' },
+          { x: 2560, y: 880, w: 158, surface: 'dirt', barrier: 'left' },
           { x: 2180, y: 440, w: 170, surface: 'gravel', barrier: 'right' },
-          { x: 1360, y: 580, w: 152, surface: 'gravel', barrier: 'left' },
-          { x: 1680, y: 1280, w: 138, surface: 'gravel', barrier: 'right' },
-          { x: 920, y: 1120, w: 94,  surface: 'tarmac', barrier: 'left' },
+          { x: 1360, y: 580, w: 152, surface: 'dirt', barrier: 'left' },
+          { x: 1680, y: 1280, w: 138, surface: 'cracked_tarmac', barrier: 'right' },
+          { x: 920, y: 1120, w: 94,  surface: 'cracked_tarmac', barrier: 'left' },
           { x: 460, y: 1640, w: 80,  surface: 'tarmac', barrier: 'both' }, // Old town narrow pass
           { x: 1140, y: 2120, w: 118, surface: 'tarmac', barrier: 'right' },
-          { x: 520, y: 2680, w: 92,  surface: 'tarmac', barrier: 'left' },
-          { x: 640, y: 3560, w: 156, surface: 'gravel', barrier: 'left' },
-          { x: 1420, y: 3980, w: 164, surface: 'gravel', barrier: 'right' },
-          { x: 1960, y: 3280, w: 102, surface: 'tarmac', barrier: 'left' },
+          { x: 520, y: 2680, w: 92,  surface: 'cracked_tarmac', barrier: 'left' },
+          { x: 640, y: 3560, w: 156, surface: 'dirt', barrier: 'left' },
+          { x: 1420, y: 3980, w: 164, surface: 'dirt', barrier: 'right' },
+          { x: 1960, y: 3280, w: 102, surface: 'cracked_tarmac', barrier: 'left' },
           { x: 2680, y: 3860, w: 96,  surface: 'tarmac', barrier: 'right' },
           { x: 3220, y: 3460, w: 124, surface: 'tarmac', barrier: 'none' }
         ]
@@ -596,27 +715,27 @@
       {
         code: 'SS5',
         name: 'Acropolis Special',
-        subtitle: 'Parnassus Marathon • Boulder Canyons & Drift Bowls',
+        subtitle: 'Parnassus Marathon • Loose Limestone Scree, Clay & Ruined Tar',
         points: [
           { x: 520, y: 620, w: 146, surface: 'gravel', barrier: 'none' },
           { x: 1340, y: 480, w: 168, surface: 'gravel', barrier: 'left' },
-          { x: 1860, y: 1040, w: 96,  surface: 'gravel', barrier: 'both' }, // Narrow canyon chute
+          { x: 1860, y: 1040, w: 96,  surface: 'dirt', barrier: 'both' }, // Narrow canyon chute
           { x: 2480, y: 480, w: 162, surface: 'gravel', barrier: 'left' },
           { x: 3320, y: 560, w: 174, surface: 'gravel', barrier: 'right' },
-          { x: 4060, y: 920, w: 132, surface: 'gravel', barrier: 'right' },
-          { x: 3380, y: 1420, w: 94,  surface: 'gravel', barrier: 'left' },
+          { x: 4060, y: 920, w: 132, surface: 'dirt', barrier: 'right' },
+          { x: 3380, y: 1420, w: 94,  surface: 'dirt', barrier: 'left' },
           { x: 4080, y: 1980, w: 160, surface: 'gravel', barrier: 'right' },
-          { x: 3260, y: 2420, w: 84,  surface: 'tarmac', barrier: 'both' }, // Paved mountain causeway
-          { x: 2480, y: 1940, w: 88,  surface: 'tarmac', barrier: 'right' },
-          { x: 1920, y: 2480, w: 166, surface: 'gravel', barrier: 'left' },
+          { x: 3260, y: 2420, w: 84,  surface: 'cracked_tarmac', barrier: 'both' }, // Ancient cracked mountain causeway
+          { x: 2480, y: 1940, w: 88,  surface: 'cracked_tarmac', barrier: 'right' },
+          { x: 1920, y: 2480, w: 166, surface: 'dirt', barrier: 'left' },
           { x: 2680, y: 3020, w: 154, surface: 'gravel', barrier: 'right' },
           { x: 3920, y: 3120, w: 172, surface: 'gravel', barrier: 'right' },
-          { x: 3780, y: 3960, w: 128, surface: 'gravel', barrier: 'right' },
-          { x: 2840, y: 3860, w: 92,  surface: 'gravel', barrier: 'left' },
+          { x: 3780, y: 3960, w: 128, surface: 'dirt', barrier: 'right' },
+          { x: 2840, y: 3860, w: 92,  surface: 'dirt', barrier: 'left' },
           { x: 2180, y: 4140, w: 164, surface: 'gravel', barrier: 'right' },
           { x: 1480, y: 3460, w: 118, surface: 'gravel', barrier: 'left' },
-          { x: 880, y: 4020, w: 158, surface: 'gravel', barrier: 'left' },
-          { x: 480, y: 3260, w: 86,  surface: 'tarmac', barrier: 'both' },
+          { x: 880, y: 4020, w: 158, surface: 'dirt', barrier: 'left' },
+          { x: 480, y: 3260, w: 86,  surface: 'cracked_tarmac', barrier: 'both' },
           { x: 1160, y: 2680, w: 94,  surface: 'tarmac', barrier: 'right' },
           { x: 520, y: 2040, w: 152, surface: 'gravel', barrier: 'left' },
           { x: 1180, y: 1460, w: 140, surface: 'gravel', barrier: 'none' }
@@ -782,21 +901,26 @@
           s.uy = s.cy / s.effW;
         }
 
-        // Calculate signed curvature and smooth surface transition blend factor (`dirtBlend` over +/- 11 samples = ~350px)
-        const blendWindow = 11;
+        // Calculate signed curvature and smooth 4-surface transition weights over +/- 10 samples
+        const blendWindow = 10;
         for (let i = 0; i < this.samples.length; i++) {
           const prev = this.samples[Math.max(0, i - 2)];
           const next = this.samples[Math.min(this.samples.length - 1, i + 2)];
           this.samples[i].signedCurv = prev.tx * next.ty - prev.ty * next.tx;
 
-          let weightedGravel = 0;
+          const weights = { tarmac: 0, cracked_tarmac: 0, dirt: 0, gravel: 0 };
           let totalWeight = 0;
           for (let k = Math.max(0, i - blendWindow); k <= Math.min(this.samples.length - 1, i + blendWindow); k++) {
             const weight = 1 - Math.abs(k - i) / (blendWindow + 1);
-            weightedGravel += (this.samples[k].surface === 'gravel' ? 1 : 0) * weight;
+            const surf = this.samples[k].surface;
+            weights[surf] = (weights[surf] || 0) + weight;
             totalWeight += weight;
           }
-          this.samples[i].dirtBlend = weightedGravel / totalWeight;
+          for (const key of SURFACE_KEYS) {
+            weights[key] /= totalWeight;
+          }
+          this.samples[i].weights = weights;
+          this.samples[i].dirtBlend = weights.dirt + weights.gravel;
         }
 
         // Sector indices (S1 at 33%, S2 at 66%, Finish at 97%)
@@ -964,118 +1088,109 @@
           y: s.my + s.cy * u + s.uy * extraPx
         });
 
-        const fillRibbonQuad = (s1, s2, uMin, uMax, style, extraMin = 0, extraMax = 0) => {
+        // Opaque quad helper: uses matching stroke + fill with zero overlap padding so semi-transparent seams/bands never appear
+        const fillOpaqueQuad = (s1, s2, uMin, uMax, color, extraMin = 0, extraMax = 0) => {
           const p1L = ptAt(s1, uMax, extraMax);
           const p2L = ptAt(s2, uMax, extraMax);
           const p2R = ptAt(s2, uMin, extraMin);
           const p1R = ptAt(s1, uMin, extraMin);
-          const padX = s1.tx * 0.85;
-          const padY = s1.ty * 0.85;
 
-          ctx.fillStyle = style;
+          ctx.fillStyle = color;
+          ctx.strokeStyle = color;
+          ctx.lineWidth = 1.4;
+          ctx.lineJoin = 'round';
           ctx.beginPath();
-          ctx.moveTo(p1L.x - padX, p1L.y - padY);
-          ctx.lineTo(p2L.x + padX, p2L.y + padY);
-          ctx.lineTo(p2R.x + padX, p2R.y + padY);
-          ctx.lineTo(p1R.x - padX, p1R.y - padY);
+          ctx.moveTo(p1L.x, p1L.y);
+          ctx.lineTo(p2L.x, p2L.y);
+          ctx.lineTo(p2R.x, p2R.y);
+          ctx.lineTo(p1R.x, p1R.y);
           ctx.closePath();
           ctx.fill();
+          ctx.stroke();
         };
 
-        // 1. Subtle Earth Embankment / Shoulder Verge Grading along Variable-Width Track
+        // Non-periodic pseudo-random hash in [0, 1) to scatter texture grains organically without stripes or bands
+        const hash = (a, b, c = 0) => {
+          let n = Math.imul(a ^ 0x9e3779b9, 374761393) + Math.imul(b ^ 0x85ebca6b, 668265263) + Math.imul(c ^ 0xc2b2ae35, 2246822519);
+          n = Math.imul(n ^ (n >>> 13), 1274126177);
+          return ((n ^ (n >>> 16)) >>> 0) / 4294967296;
+        };
+
+        // 1. Continuous Single-Path Earth Shoulder Verge (Zero internal quad seams)
+        ctx.fillStyle = PALETTE.paperDeep;
+        ctx.beginPath();
+        for (let i = 0; i < this.samples.length; i++) {
+          const p = ptAt(this.samples[i], 0.5, 16);
+          if (i === 0) ctx.moveTo(p.x, p.y);
+          else ctx.lineTo(p.x, p.y);
+        }
+        for (let i = this.samples.length - 1; i >= 0; i--) {
+          const p = ptAt(this.samples[i], -0.5, -16);
+          ctx.lineTo(p.x, p.y);
+        }
+        ctx.closePath();
+        ctx.fill();
+
+        // 2. Continuous Single-Path Outer Track Border (Ink Halo)
+        ctx.fillStyle = PALETTE.asphaltEdge;
+        ctx.beginPath();
+        for (let i = 0; i < this.samples.length; i++) {
+          const p = ptAt(this.samples[i], 0.5, 5);
+          if (i === 0) ctx.moveTo(p.x, p.y);
+          else ctx.lineTo(p.x, p.y);
+        }
+        for (let i = this.samples.length - 1; i >= 0; i--) {
+          const p = ptAt(this.samples[i], -0.5, -5);
+          ctx.lineTo(p.x, p.y);
+        }
+        ctx.closePath();
+        ctx.fill();
+
+        // 3. Seamless Opaque Track Ribbon (Smoothly blends all 4 surfaces without overlap bands)
         for (let i = 0; i < this.samples.length - 1; i++) {
           const s1 = this.samples[i];
           const s2 = this.samples[i + 1];
-          fillRibbonQuad(s1, s2, -0.5, 0.5, 'rgba(206, 191, 169, 0.55)', -18, 18);
+          const avgWeights = {
+            tarmac: (s1.weights.tarmac + s2.weights.tarmac) * 0.5,
+            cracked_tarmac: (s1.weights.cracked_tarmac + s2.weights.cracked_tarmac) * 0.5,
+            dirt: (s1.weights.dirt + s2.weights.dirt) * 0.5,
+            gravel: (s1.weights.gravel + s2.weights.gravel) * 0.5
+          };
+          fillOpaqueQuad(s1, s2, -0.5, 0.5, blendSurfaceRGB(avgWeights));
         }
 
-        // 2. Outer Track Border (Ink Halo Quad Strip — No round caps or corner pinches!)
-        for (let i = 0; i < this.samples.length - 1; i++) {
-          const s1 = this.samples[i];
-          const s2 = this.samples[i + 1];
-          fillRibbonQuad(s1, s2, -0.5, 0.5, PALETTE.asphaltEdge, -5, 5);
-        }
-
-        // 3. Base Track Ribbon Quads with Smooth Color Blending & Zero Circular Endcaps
-        for (let i = 0; i < this.samples.length - 1; i++) {
-          const s1 = this.samples[i];
-          const s2 = this.samples[i + 1];
-          const blend = (s1.dirtBlend + s2.dirtBlend) * 0.5;
-          fillRibbonQuad(s1, s2, -0.5, 0.5, lerpColorRGB(PALETTE.asphaltRGB, PALETTE.gravelRGB, blend));
-        }
-
-        // 3B. Continuous Longitudinal Wheel Grooves, Gravel Berms & Asphalt Racing Line Polish
-        for (let i = 0; i < this.samples.length - 1; i++) {
-          const s1 = this.samples[i];
-          const s2 = this.samples[i + 1];
-          const blend = (s1.dirtBlend + s2.dirtBlend) * 0.5;
-
-          if (blend > 0.08) {
-            // Swept darker earth wheel ruts at u = ±0.21
-            const rutAlpha = Math.min(0.55, blend * 0.52);
-            fillRibbonQuad(s1, s2, -0.31, -0.11, `rgba(142, 121, 96, ${rutAlpha})`);
-            fillRibbonQuad(s1, s2, 0.11, 0.31, `rgba(142, 121, 96, ${rutAlpha})`);
-
-            // Lighter loose gravel center crown & outer cushion berms
-            const bermAlpha = Math.min(0.48, blend * 0.44);
-            fillRibbonQuad(s1, s2, -0.06, 0.06, `rgba(210, 194, 173, ${bermAlpha})`);
-            fillRibbonQuad(s1, s2, -0.47, -0.35, `rgba(205, 188, 166, ${bermAlpha})`);
-            fillRibbonQuad(s1, s2, 0.35, 0.47, `rgba(205, 188, 166, ${bermAlpha})`);
-          }
-
-          if (blend < 0.92) {
-            // Subtle rubbered-in dark racing grooves & lighter coarse macadam crown on asphalt
-            const tarmacAlpha = (1 - blend);
-            fillRibbonQuad(s1, s2, -0.29, -0.11, `rgba(28, 28, 27, ${tarmacAlpha * 0.42})`);
-            fillRibbonQuad(s1, s2, 0.11, 0.29, `rgba(28, 28, 27, ${tarmacAlpha * 0.42})`);
-            fillRibbonQuad(s1, s2, -0.05, 0.05, `rgba(58, 58, 55, ${tarmacAlpha * 0.28})`);
-
-            // Subtle weathered painted shoulder lines on wider tarmac sections
-            if (s1.w >= 96 && blend < 0.25) {
-              fillRibbonQuad(s1, s2, -0.445, -0.42, 'rgba(244, 241, 234, 0.38)');
-              fillRibbonQuad(s1, s2, 0.42, 0.445, 'rgba(244, 241, 234, 0.38)');
+        // 4A. Continuous Painted White/Cream Edge Stripes on Smooth Tarmac Sections
+        ctx.strokeStyle = '#DED8CE';
+        ctx.lineWidth = 2.2;
+        for (const side of [-0.44, 0.44]) {
+          ctx.beginPath();
+          let drawing = false;
+          for (let i = 0; i < this.samples.length; i++) {
+            const s = this.samples[i];
+            if (s.weights.tarmac > 0.55) {
+              const p = ptAt(s, side);
+              if (!drawing) {
+                ctx.moveTo(p.x, p.y);
+                drawing = true;
+              } else {
+                ctx.lineTo(p.x, p.y);
+              }
+            } else {
+              drawing = false;
             }
           }
+          ctx.stroke();
         }
 
-        // 4. Feathered Longitudinal Tire Groove Fingers & Area-Weighted Surface Textures (Zero Corner Pinching!)
+        // 4B. Detailed Non-Banded Surface Textures for All 4 Surfaces
         for (let i = 2; i < this.samples.length - 2; i++) {
           const s = this.samples[i];
           const next = this.samples[i + 1];
           const prev = this.samples[i - 1];
+          const w = s.weights;
           const isTransitionCenter = s.surface !== prev.surface;
 
-          // Inside transition zone: draw jagged longitudinal fingers of asphalt/gravel & wheel-rut dust streaks
-          if (s.dirtBlend > 0.02 && s.dirtBlend < 0.98) {
-            const blend = s.dirtBlend;
-            const lanes = [-0.38, -0.21, 0.0, 0.21, 0.38];
-            for (let l = 0; l < lanes.length; l++) {
-              const laneU = lanes[l];
-              const stripHalfU = 0.045 + ((i * 17 + l * 31) % 10) * 0.004;
-              const fingerBias = ((l * 37 + i * 13) % 100) / 100;
-
-              if (blend > 0.12 && blend < 0.88) {
-                const isWheelTrack = Math.abs(laneU) > 0.15 && Math.abs(laneU) < 0.30;
-                const style = isWheelTrack
-                  ? `rgba(43, 43, 42, ${(1 - blend) * 0.75})`
-                  : `rgba(184, 165, 142, ${blend * 0.75})`;
-                fillRibbonQuad(s, next, laneU - stripHalfU, laneU + stripHalfU, style);
-              }
-
-              if (fingerBias > 0.35) {
-                const u = (((i * 53 + l * 97) % 100) / 100 - 0.5) * 0.88;
-                const p1 = ptAt(s, u);
-                const p2 = ptAt(next, u);
-                const localStep = Math.hypot(p2.x - p1.x, p2.y - p1.y);
-                if (((i * 19 + l * 41) % 100) / 100 <= localStep / 16.0) {
-                  ctx.fillStyle = blend < 0.5 ? PALETTE.gravel : PALETTE.asphalt;
-                  ctx.fillRect(p1.x - 2, p1.y - 2, 4 + (l % 3), 3 + (i % 2));
-                }
-              }
-            }
-          }
-
-          // Paint crisp roadside transition curb blocks on the outer edges
+          // Paint crisp roadside transition curb blocks on the outer edges where surface changes
           if (isTransitionCenter) {
             for (const side of [-1, 1]) {
               const edgePt = ptAt(s, side * 0.48);
@@ -1091,104 +1206,223 @@
             }
           }
 
-          // Area-weighted Dirt & Gravel Texture (prevents pebble clumping/pinching on tight inside corners)
-          if (s.dirtBlend > 0.25) {
-            const baseCount = Math.ceil(8 * s.dirtBlend * (s.effW / 115));
-            for (let p = 0; p < baseCount; p++) {
-              const u = (((i * 37 + p * 73) % 100) / 100 - 0.5) * 0.90;
-              const v = ((i * 61 + p * 29) % 100) / 100;
-              const p1 = ptAt(s, u);
-              const p2 = ptAt(next, u);
-              const localStep = Math.hypot(p2.x - p1.x, p2.y - p1.y);
-
-              // Area-density guard: skip pebbles proportionally when the inside of a corner is compressed
-              const keepProb = Math.min(1.0, localStep / 15.5);
-              const roll = ((i * 43 + p * 89) % 100) / 100;
-              if (roll > keepProb) continue;
-
-              const gx = p1.x + (p2.x - p1.x) * v;
-              const gy = p1.y + (p2.y - p1.y) * v;
-              const tonePick = (i + p) % 3;
-
-              if (tonePick === 0) {
-                ctx.fillStyle = '#89745E'; // Deep gravel stone
-              } else if (tonePick === 1) {
-                ctx.fillStyle = PALETTE.gravelDark;
-              } else {
-                ctx.fillStyle = '#D5C6B2'; // Sunlit limestone chip
-              }
-
-              const chipW = 2.4 + (p % 3) * 1.1;
-              const chipH = 1.8 + ((i + p) % 2) * 1.0;
-              ctx.save();
-              ctx.translate(gx, gy);
-              ctx.rotate(Math.atan2(p2.y - p1.y, p2.x - p1.x) + ((p % 3) - 1) * 0.25);
-              ctx.fillRect(-chipW * 0.5, -chipH * 0.5, chipW, chipH);
-              ctx.restore();
-            }
-
-            // Subtle washboard chatter ribs across wheel ruts on curved gravel sections
-            if (Math.abs(s.signedCurv) > 0.03 && i % 2 === 0) {
-              for (const rutU of [-0.21, 0.21]) {
-                const rL = ptAt(s, rutU - 0.07);
-                const rR = ptAt(s, rutU + 0.07);
-                ctx.strokeStyle = 'rgba(122, 102, 80, 0.34)';
-                ctx.lineWidth = 2.0;
-                ctx.beginPath();
-                ctx.moveTo(rL.x, rL.y);
-                ctx.lineTo(rR.x, rR.y);
-                ctx.stroke();
-              }
-            }
-          }
-
-          // Area-weighted Asphalt Mineral Grain & Weathered Tar Seams
-          if (s.dirtBlend < 0.75) {
-            const tarmacWeight = 1 - s.dirtBlend;
-            const speckCount = Math.ceil(5 * tarmacWeight * (s.effW / 120));
+          // --- SURFACE 1: SMOOTH TARMAC (Hot-mix macadam aggregate, quartz sparkle & centerline) ---
+          if (w.tarmac > 0.08) {
+            const speckCount = Math.ceil(9 * w.tarmac * (s.effW / 115));
             for (let p = 0; p < speckCount; p++) {
-              const u = (((i * 41 + p * 67) % 100) / 100 - 0.5) * 0.88;
-              const v = ((i * 23 + p * 53) % 100) / 100;
+              const u = (hash(i, p, 11) - 0.5) * 0.86;
+              const v = hash(i, p, 12);
               const p1 = ptAt(s, u);
               const p2 = ptAt(next, u);
               const localStep = Math.hypot(p2.x - p1.x, p2.y - p1.y);
-              if (((i * 31 + p * 79) % 100) / 100 > localStep / 15.5) continue;
+              if (hash(i, p, 13) > Math.min(1.0, localStep / 15.5)) continue;
 
               const ax = p1.x + (p2.x - p1.x) * v;
               const ay = p1.y + (p2.y - p1.y) * v;
-              ctx.fillStyle = (p % 2 === 0) ? 'rgba(68, 68, 64, 0.55)' : 'rgba(24, 24, 22, 0.55)';
-              ctx.fillRect(ax - 1.2, ay - 1.2, 2.4, 2.4);
+              const pick = hash(i, p, 14);
+              // Dark basalt pore, mid slate grain, or subtle light mineral chip
+              ctx.fillStyle = pick < 0.45 ? '#1D1D1B' : (pick < 0.85 ? '#383836' : '#575652');
+              const sz = 1.5 + hash(i, p, 15) * 1.4;
+              ctx.fillRect(ax - sz * 0.5, ay - sz * 0.5, sz, sz);
             }
 
-            // Occasional weathered alpine tar-seal seam along the asphalt
-            if (i % 9 === 0 && s.dirtBlend < 0.2) {
-              const seamU = (((i * 17) % 60) / 100) - 0.3;
-              const p1 = ptAt(s, seamU);
-              const p2 = ptAt(next, seamU + 0.03);
-              ctx.strokeStyle = 'rgba(22, 22, 20, 0.48)';
-              ctx.lineWidth = 1.6;
+            // Crisp painted centerline dashes on smooth tarmac
+            if (i % 4 === 0 && w.tarmac > 0.5) {
+              ctx.strokeStyle = PALETTE.cream;
+              ctx.lineWidth = 2.4;
               ctx.beginPath();
-              ctx.moveTo(p1.x, p1.y);
-              ctx.lineTo(p2.x, p2.y);
+              ctx.moveTo(s.mx, s.my);
+              ctx.lineTo(next.mx, next.my);
               ctx.stroke();
             }
           }
 
-          // Crisp painted centerline dashes following the smoothed midpoint
-          if (i % 4 === 0 && s.dirtBlend < 0.32) {
-            ctx.strokeStyle = PALETTE.cream;
-            ctx.lineWidth = 2.4;
-            ctx.beginPath();
-            ctx.moveTo(s.mx, s.my);
-            ctx.lineTo(next.mx, next.my);
-            ctx.stroke();
+          // --- SURFACE 2: OLD / CRACKED ASPHALT (Cold-patch repairs, branching fissure cracks, eroded edges) ---
+          if (w.cracked_tarmac > 0.08) {
+            // Broken/faded shoulder stripe fragments
+            if (i % 3 !== 0 && w.cracked_tarmac > 0.45) {
+              for (const side of [-0.43, 0.43]) {
+                if (hash(i, side > 0 ? 1 : 2, 20) > 0.35) {
+                  const e1 = ptAt(s, side);
+                  const e2 = ptAt(next, side);
+                  ctx.strokeStyle = 'rgba(216, 207, 194, 0.55)';
+                  ctx.lineWidth = 1.8;
+                  ctx.beginPath();
+                  ctx.moveTo(e1.x, e1.y);
+                  ctx.lineTo(e2.x, e2.y);
+                  ctx.stroke();
+                }
+              }
+            }
+
+            // Irregular dark cold-patch asphalt repairs & spalled potholes
+            if (hash(i, 0, 21) < 0.28 * w.cracked_tarmac) {
+              const uPatch = (hash(i, 1, 22) - 0.5) * 0.68;
+              const patchCenter = ptAt(s, uPatch);
+              const pw = 10 + hash(i, 2, 23) * 18;
+              const ph = 7 + hash(i, 3, 24) * 12;
+              ctx.save();
+              ctx.translate(patchCenter.x, patchCenter.y);
+              ctx.rotate(Math.atan2(s.ty, s.tx) + (hash(i, 4, 25) - 0.5) * 0.25);
+              ctx.fillStyle = hash(i, 5, 26) > 0.4 ? PALETTE.crackedPatch : '#312F2C';
+              ctx.strokeStyle = '#22201E';
+              ctx.lineWidth = 1.1;
+              ctx.fillRect(-pw * 0.5, -ph * 0.5, pw, ph);
+              ctx.strokeRect(-pw * 0.5, -ph * 0.5, pw, ph);
+              ctx.restore();
+            }
+
+            // Procedural branching fissure cracks & tar snakes
+            if (hash(i, 0, 27) < 0.52 * w.cracked_tarmac) {
+              const uStart = (hash(i, 1, 28) - 0.5) * 0.78;
+              const pStart = ptAt(s, uStart);
+              let cx = pStart.x;
+              let cy = pStart.y;
+              const baseAng = Math.atan2(s.ty, s.tx) + (hash(i, 2, 29) - 0.5) * 2.2;
+
+              ctx.strokeStyle = '#191816';
+              ctx.lineWidth = 1.4;
+              ctx.beginPath();
+              ctx.moveTo(cx, cy);
+
+              let branchX = cx, branchY = cy;
+              const segs = 3 + Math.floor(hash(i, 3, 30) * 3);
+              for (let k = 0; k < segs; k++) {
+                const segAng = baseAng + (hash(i, k, 31) - 0.5) * 1.3;
+                const segLen = 5 + hash(i, k, 32) * 7;
+                cx += Math.cos(segAng) * segLen;
+                cy += Math.sin(segAng) * segLen;
+                ctx.lineTo(cx, cy);
+                if (k === 1) {
+                  branchX = cx;
+                  branchY = cy;
+                }
+              }
+              ctx.stroke();
+
+              // Secondary fork off the main fissure crack
+              if (hash(i, 4, 33) > 0.35) {
+                const forkAng = baseAng + (hash(i, 5, 34) > 0.5 ? 0.85 : -0.85);
+                ctx.lineWidth = 1.0;
+                ctx.beginPath();
+                ctx.moveTo(branchX, branchY);
+                ctx.lineTo(branchX + Math.cos(forkAng) * 8, branchY + Math.sin(forkAng) * 8);
+                ctx.stroke();
+              }
+            }
+
+            // Weathered coarse aggregate & loose crumbs on cracked tarmac
+            const crumbCount = Math.ceil(6 * w.cracked_tarmac * (s.effW / 115));
+            for (let p = 0; p < crumbCount; p++) {
+              const u = (hash(i, p, 35) - 0.5) * 0.92;
+              const v = hash(i, p, 36);
+              const p1 = ptAt(s, u);
+              const p2 = ptAt(next, u);
+              if (hash(i, p, 37) > Math.min(1.0, Math.hypot(p2.x - p1.x, p2.y - p1.y) / 15.5)) continue;
+              const gx = p1.x + (p2.x - p1.x) * v;
+              const gy = p1.y + (p2.y - p1.y) * v;
+              ctx.fillStyle = hash(i, p, 38) > 0.45 ? '#2B2927' : '#635E56';
+              ctx.fillRect(gx - 1, gy - 1, 2.2, 2.2);
+            }
+          }
+
+          // --- SURFACE 3: PACKED DIRT (Sienna clay mottling, loamy soil clods & embedded flat cobbles) ---
+          if (w.dirt > 0.06) {
+            // Organic dark clay moisture/soil patches
+            if (hash(i, 0, 40) < 0.42 * w.dirt) {
+              const uClod = (hash(i, 1, 41) - 0.5) * 0.76;
+              const clodPt = ptAt(s, uClod);
+              const rx = 6 + hash(i, 2, 42) * 11;
+              const ry = 4 + hash(i, 3, 43) * 7;
+              ctx.save();
+              ctx.translate(clodPt.x, clodPt.y);
+              ctx.rotate(Math.atan2(s.ty, s.tx) + (hash(i, 4, 44) - 0.5) * 0.5);
+              ctx.fillStyle = hash(i, 5, 45) > 0.45 ? PALETTE.dirtDark : PALETTE.dirtLight;
+              ctx.beginPath();
+              ctx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.restore();
+            }
+
+            // Loamy soil crumbs & embedded smooth river cobbles
+            const dirtCount = Math.ceil(11 * w.dirt * (s.effW / 115));
+            for (let p = 0; p < dirtCount; p++) {
+              const u = (hash(i, p, 46) - 0.5) * 0.92;
+              const v = hash(i, p, 47);
+              const p1 = ptAt(s, u);
+              const p2 = ptAt(next, u);
+              const localStep = Math.hypot(p2.x - p1.x, p2.y - p1.y);
+              if (hash(i, p, 48) > Math.min(1.0, localStep / 15.5)) continue;
+
+              const dx = p1.x + (p2.x - p1.x) * v;
+              const dy = p1.y + (p2.y - p1.y) * v;
+              const pick = hash(i, p, 49);
+
+              if (pick < 0.16) {
+                // Embedded rounded cobble stone with dark soil rim
+                const rad = 2.0 + hash(i, p, 50) * 1.8;
+                ctx.fillStyle = '#593D28';
+                ctx.beginPath();
+                ctx.arc(dx + 0.8, dy + 0.8, rad, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#B89F88';
+                ctx.beginPath();
+                ctx.arc(dx, dy, rad, 0, Math.PI * 2);
+                ctx.fill();
+              } else {
+                ctx.fillStyle = pick < 0.58 ? '#6E4B32' : '#BC9372';
+                const sz = 1.8 + hash(i, p, 51) * 2.2;
+                ctx.fillRect(dx - sz * 0.5, dy - sz * 0.5, sz, sz * 0.8);
+              }
+            }
+          }
+
+          // --- SURFACE 4: LOOSE GRAVEL (Coarse angular limestone scree with 1px 3D relief shadows) ---
+          if (w.gravel > 0.06) {
+            const gravelCount = Math.ceil(15 * w.gravel * (s.effW / 115));
+            for (let p = 0; p < gravelCount; p++) {
+              const u = (hash(i, p, 1) - 0.5) * 0.92;
+              const v = hash(i, p, 2);
+              const p1 = ptAt(s, u);
+              const p2 = ptAt(next, u);
+              const localStep = Math.hypot(p2.x - p1.x, p2.y - p1.y);
+              if (hash(i, p, 3) > Math.min(1.0, localStep / 15.5)) continue;
+
+              const gx = p1.x + (p2.x - p1.x) * v;
+              const gy = p1.y + (p2.y - p1.y) * v;
+              const tonePick = hash(i, p, 4);
+
+              const chipW = 2.2 + hash(i, p, 5) * 2.8;
+              const chipH = 1.7 + hash(i, p, 6) * 2.1;
+              const rot = hash(i, p, 7) * Math.PI;
+
+              ctx.save();
+              ctx.translate(gx, gy);
+              ctx.rotate(rot);
+
+              // 1px dark relief shadow under larger angular gravel stones
+              if (chipW > 3.2) {
+                ctx.fillStyle = '#6B5D4D';
+                ctx.fillRect(-chipW * 0.5 + 0.9, -chipH * 0.5 + 0.9, chipW, chipH);
+              }
+
+              if (tonePick < 0.32) {
+                ctx.fillStyle = '#857564'; // Slate-tan limestone
+              } else if (tonePick < 0.68) {
+                ctx.fillStyle = PALETTE.gravelDark;
+              } else {
+                ctx.fillStyle = PALETTE.gravelLight; // Sunlit chalky flint chip
+              }
+              ctx.fillRect(-chipW * 0.5, -chipH * 0.5, chipW, chipH);
+              ctx.restore();
+            }
           }
 
           // Highlight narrow squeeze sections (w < 96) with classic Swiss red/cream apex curbing
           if (s.w < 96 && i % 2 === 0) {
             const curbColor = (Math.floor(i / 2) % 2 === 0) ? PALETTE.terracotta : PALETTE.cream;
-            fillRibbonQuad(s, next, -0.5, -0.45, curbColor);
-            fillRibbonQuad(s, next, 0.45, 0.5, curbColor);
+            fillOpaqueQuad(s, next, -0.5, -0.45, curbColor);
+            fillOpaqueQuad(s, next, 0.45, 0.5, curbColor);
           }
         }
 
@@ -1420,16 +1654,46 @@
         const ctx = this.ctx;
         ctx.save();
         ctx.lineCap = 'round';
-        ctx.lineWidth = surface === 'gravel' ? 5.0 : 3.4;
         if (surface === 'gravel') {
-          ctx.strokeStyle = `rgba(116, 95, 72, ${Math.min(0.62, alpha * 0.72)})`;
+          // Wide pale-edged trench carved through loose gravel scree
+          ctx.lineWidth = 6.2;
+          ctx.strokeStyle = `rgba(223, 210, 192, ${Math.min(0.45, alpha * 0.52)})`;
+          ctx.beginPath();
+          ctx.moveTo(x1, y1);
+          ctx.lineTo(x2, y2);
+          ctx.stroke();
+
+          ctx.lineWidth = 3.8;
+          ctx.strokeStyle = `rgba(118, 100, 79, ${Math.min(0.68, alpha * 0.78)})`;
+          ctx.beginPath();
+          ctx.moveTo(x1, y1);
+          ctx.lineTo(x2, y2);
+          ctx.stroke();
+        } else if (surface === 'dirt') {
+          // Deep rich loamy chocolate-umber clay rut
+          ctx.lineWidth = 4.8;
+          ctx.strokeStyle = `rgba(88, 54, 32, ${Math.min(0.72, alpha * 0.80)})`;
+          ctx.beginPath();
+          ctx.moveTo(x1, y1);
+          ctx.lineTo(x2, y2);
+          ctx.stroke();
+        } else if (surface === 'cracked_tarmac') {
+          // Slightly irregular skipping rubber mark over bumpy broken asphalt
+          ctx.lineWidth = 3.4;
+          ctx.strokeStyle = `rgba(24, 23, 21, ${Math.min(0.65, alpha * 0.72)})`;
+          ctx.beginPath();
+          ctx.moveTo(x1, y1);
+          ctx.lineTo(x2, y2);
+          ctx.stroke();
         } else {
-          ctx.strokeStyle = `rgba(20, 20, 18, ${Math.min(0.68, alpha * 0.75)})`;
+          // Crisp dark rubber skidmark on smooth tarmac
+          ctx.lineWidth = 3.5;
+          ctx.strokeStyle = `rgba(18, 18, 16, ${Math.min(0.72, alpha * 0.78)})`;
+          ctx.beginPath();
+          ctx.moveTo(x1, y1);
+          ctx.lineTo(x2, y2);
+          ctx.stroke();
         }
-        ctx.beginPath();
-        ctx.moveTo(x1, y1);
-        ctx.lineTo(x2, y2);
-        ctx.stroke();
         ctx.restore();
       }
     }
@@ -1451,9 +1715,12 @@
         this.reversing = false;
         this.brakeHoldTimer = 0;
         this.impactCooldown = 0;
+        this.blockedByObstacle = false;
         this.driftAngle = 0;
         this.surface = 'tarmac';
+        this.surfaceWeights = { tarmac: 1, cracked_tarmac: 0, dirt: 0, gravel: 0 };
         this.dirtBlend = 0;
+        this.bumpPhase = 0;
         this.slipAngle = 0;
         this.speed = 0;
         this.gear = 1;
@@ -1509,28 +1776,87 @@
         const prevSurface = this.surface;
         const onRibbon = surfaceDist <= surfaceSample.w * 0.54;
         this.surface = onRibbon ? surfaceSample.surface : 'offtrack';
+        this.surfaceWeights = onRibbon
+          ? surfaceSample.weights
+          : { tarmac: 0, cracked_tarmac: 0, dirt: 0.4, gravel: 0.6 };
         this.dirtBlend = onRibbon ? surfaceSample.dirtBlend : 1.0;
 
-        if (prevSurface !== this.surface && this.speed > 130 && onRibbon) {
+        if (prevSurface !== this.surface && this.speed > 125 && onRibbon) {
           game.triggerCameraImpulse((Math.random() - 0.5) * 3.0, (Math.random() - 0.5) * 3.0);
         }
 
-        // 2. Steering & Yaw Rotation
+        // Compute weighted physical handling properties from the 4 surface profiles
+        let maxSpeed = 265;
+        let engineForce = 330;
+        let brakeDecel = 460;
+        let lateralGrip = 1.35;
+        let gripRelease = 0.50;
+        let pendulumKick = 140;
+        let yawAuthority = 3.85;
+        let yawResponse = 11.5;
+        let baseDrag = 1.15;
+        let driftScrubDrag = 0.35;
+        let maxLateralRatio = 0.85;
+        let slipThreshold = 75;
+        let bumpiness = 0.65;
+
+        if (onRibbon) {
+          maxSpeed = 0;
+          engineForce = 0;
+          brakeDecel = 0;
+          lateralGrip = 0;
+          gripRelease = 0;
+          pendulumKick = 0;
+          yawAuthority = 0;
+          yawResponse = 0;
+          baseDrag = 0;
+          driftScrubDrag = 0;
+          maxLateralRatio = 0;
+          slipThreshold = 0;
+          bumpiness = 0;
+
+          for (const k of SURFACE_KEYS) {
+            const w = this.surfaceWeights[k] || 0;
+            const spec = SURFACE_SPECS[k];
+            maxSpeed += spec.maxSpeed * w;
+            engineForce += spec.engineForce * w;
+            brakeDecel += spec.brakeDecel * w;
+            lateralGrip += spec.lateralGrip * w;
+            gripRelease += spec.gripRelease * w;
+            pendulumKick += spec.pendulumKick * w;
+            yawAuthority += spec.yawAuthority * w;
+            yawResponse += spec.yawResponse * w;
+            baseDrag += spec.baseDrag * w;
+            driftScrubDrag += spec.driftScrubDrag * w;
+            maxLateralRatio += spec.maxLateralRatio * w;
+            slipThreshold += spec.slipThreshold * w;
+            bumpiness += spec.bumpiness * w;
+          }
+        }
+
+        // 2. Steering & Yaw Rotation (with Cracked Asphalt camber/fissure perturbation)
         const targetSteer = (input.right ? 1 : 0) - (input.left ? 1 : 0);
         const steerRate = targetSteer !== 0 ? 12.0 : 15.0;
         this.steer += (targetSteer - this.steer) * Math.min(1, steerRate * dt);
         this.braking = Boolean(input.brake);
 
         this.speed = Math.hypot(this.vx, this.vy);
-        const blend = this.dirtBlend;
+        this.bumpPhase += this.speed * dt * 0.16;
 
         const speedFactor = Math.min(1, this.speed / 55);
-        const yawAuthority = 3.35 * (1 - blend) + 3.95 * blend;
         const highSpeedStability = 1 - Math.min(0.22, this.speed / 1250);
         const reverseDir = this.reversing ? -1 : 1;
-        const targetAngVel = this.steer * yawAuthority * speedFactor * highSpeedStability * reverseDir;
 
-        const yawResponse = 14.5 * (1 - blend) + 11.5 * blend;
+        // Cracked Asphalt & rough surface camber deflection
+        let camberJitter = 0;
+        if (this.surface === 'cracked_tarmac' && this.speed > 90) {
+          camberJitter = Math.sin(this.bumpPhase * 1.9) * Math.cos(this.bumpPhase * 0.7) * 0.34 * (this.speed / 450);
+          if (Math.random() < 0.18 && this.speed > 210) {
+            game.triggerCameraImpulse((Math.random() - 0.5) * 1.4, (Math.random() - 0.5) * 1.4);
+          }
+        }
+
+        const targetAngVel = (this.steer * yawAuthority + camberJitter) * speedFactor * highSpeedStability * reverseDir;
         this.angularVel += (targetAngVel - this.angularVel) * Math.min(1, yawResponse * dt);
         this.angle += this.angularVel * dt;
 
@@ -1540,29 +1866,22 @@
         let forwardVel = this.vx * cosA + this.vy * sinA;
         let lateralVel = -this.vx * sinA + this.vy * cosA;
 
-        // 4. Auto-Throttle + Pure Braking -> Reverse
-        const maxSpeed = this.surface === 'offtrack'
-          ? 265
-          : 495 * (1 - blend) + 445 * blend;
-        const engineForce = this.surface === 'offtrack'
-          ? 330
-          : 565 * (1 - blend) + 505 * blend;
-
+        // 4. Auto-Throttle + Pure Braking -> Instant Reverse When Blocked
         if (this.braking) {
-          const brakeDecel = this.surface === 'offtrack' ? 420 : (540 * (1 - blend) + 450 * blend);
-          if (forwardVel > 6) {
+          // If blocked by an obstacle or nearly stopped, immediately engage reverse gear so player is never stuck
+          if (forwardVel > 18 && !this.blockedByObstacle) {
             forwardVel = Math.max(0, forwardVel - brakeDecel * dt);
             this.reversing = false;
             this.brakeHoldTimer = 0;
           } else {
             this.brakeHoldTimer += dt;
-            if (this.brakeHoldTimer < 0.12 && !this.reversing) {
+            if (this.brakeHoldTimer < 0.06 && !this.reversing && !this.blockedByObstacle) {
               forwardVel = 0;
             } else {
               this.reversing = true;
-              const maxReverseSpeed = -165;
-              const reverseAccel = 280;
-              forwardVel = Math.max(maxReverseSpeed, forwardVel - reverseAccel * dt);
+              const maxReverseSpeed = -185;
+              const reverseAccel = 360;
+              forwardVel = Math.max(maxReverseSpeed, Math.min(0, forwardVel) - reverseAccel * dt);
             }
           }
         } else {
@@ -1578,33 +1897,29 @@
           }
         }
 
-        // 5. Slip-Angle Drifting Physics
-        const tarmacLateralGrip = 4.25;
-        const gravelLateralGrip = 1.50;
-        let lateralGrip = this.surface === 'offtrack'
-          ? 1.35
-          : tarmacLateralGrip * (1 - blend) + gravelLateralGrip * blend;
-
+        // 5. Slip-Angle Drifting Physics across all 4 Surfaces
         const absSteer = Math.abs(this.steer);
         if (absSteer > 0.1 && forwardVel > 75) {
-          const gripRelease = 0.64 * (1 - blend) + 0.48 * blend;
           lateralGrip *= gripRelease;
+          const kick = pendulumKick * Math.min(1.25, this.speed / 255);
+          lateralVel -= this.steer * kick * dt;
+        }
 
-          const pendulumKick = (88 * (1 - blend) + 158 * blend) * Math.min(1.2, this.speed / 260);
-          lateralVel -= this.steer * pendulumKick * dt;
+        // On Cracked Asphalt, bumps momentarily unsettle rear lateral bite during hard cornering
+        if (this.surface === 'cracked_tarmac' && Math.abs(lateralVel) > 35 && this.speed > 140) {
+          lateralVel += Math.sin(this.bumpPhase * 2.7) * 145 * dt;
         }
 
         lateralVel -= lateralVel * Math.min(1, lateralGrip * dt);
 
-        const maxLateral = Math.max(95, Math.abs(forwardVel) * (0.64 * (1 - blend) + 0.90 * blend));
+        const maxLateral = Math.max(95, Math.abs(forwardVel) * maxLateralRatio);
         if (Math.abs(lateralVel) > maxLateral) {
           lateralVel = Math.sign(lateralVel) * maxLateral;
         }
 
         const slideRatio = Math.min(1, Math.abs(lateralVel) / 185);
-        const baseDrag = this.surface === 'offtrack' ? 1.15 : (0.21 * (1 - blend) + 0.27 * blend);
-        const driftScrubDrag = slideRatio * (0.38 * (1 - blend) + 0.32 * blend);
-        forwardVel -= forwardVel * Math.min(1, (baseDrag + driftScrubDrag) * dt);
+        const totalDrag = baseDrag + slideRatio * driftScrubDrag;
+        forwardVel -= forwardVel * Math.min(1, totalDrag * dt);
 
         this.driftAngle = Math.atan2(lateralVel, Math.max(40, Math.abs(forwardVel)));
 
@@ -1615,6 +1930,7 @@
 
         this.x += this.vx * dt;
         this.y += this.vy * dt;
+        this.blockedByObstacle = false;
 
         // 7A. Roadside Bollard Deflection (Glancing Guardrail Physics — Never Snags or Stops Auto-Accel)
         for (const b of world.barriers) {
@@ -1623,14 +1939,15 @@
           const dist = Math.hypot(dx, dy);
           const minDist = b.r + 13;
           if (dist < minDist && dist > 0.001) {
+            this.blockedByObstacle = true;
             const nx = dx / dist;
             const ny = dy / dist;
             // Push car slightly past minDist so it doesn't re-collide on the next sub-step
-            this.x = b.x + nx * (minDist + 0.6);
-            this.y = b.y + ny * (minDist + 0.6);
+            this.x = b.x + nx * (minDist + 0.8);
+            this.y = b.y + ny * (minDist + 0.8);
 
             // Use the track's inward normal at this barrier post so sliding along a row of bollards never catches a post face head-on
-            const bs = world.samples[b.index] || currentSample;
+            const bs = world.samples[b.index] || surfaceSample;
             const inwardX = -bs.nx * (b.side || 1);
             const inwardY = -bs.ny * (b.side || 1);
             let defX = nx * 0.35 + inwardX * 0.65;
@@ -1641,20 +1958,21 @@
 
             const vn = this.vx * defX + this.vy * defY;
             if (vn < 0) {
-              // Remove inward wall penetration velocity and add a small inward push back onto the road
-              this.vx -= 1.04 * vn * defX;
-              this.vy -= 1.04 * vn * defY;
-              this.vx += defX * 22;
-              this.vy += defY * 22;
-              // Preserve tangential speed along the barrier
-              this.vx *= 0.93;
-              this.vy *= 0.93;
+              this.vx -= 1.05 * vn * defX;
+              this.vy -= 1.05 * vn * defY;
+              if (!this.braking) {
+                this.vx += defX * 20;
+                this.vy += defY * 20;
+              }
+              this.vx *= 0.92;
+              this.vy *= 0.92;
             }
 
-            // Gently guide the chassis nose along the road tangent so a head-on barrier hit self-corrects without needing steering input
-            const headingCross = Math.cos(this.angle) * defY - Math.sin(this.angle) * defX;
-            const nudgeSign = Math.abs(headingCross) > 0.08 ? Math.sign(headingCross) : (b.side || 1);
-            this.angle += nudgeSign * 2.4 * dt;
+            if (!this.braking) {
+              const headingCross = Math.cos(this.angle) * defY - Math.sin(this.angle) * defX;
+              const nudgeSign = Math.abs(headingCross) > 0.08 ? Math.sign(headingCross) : (b.side || 1);
+              this.angle += nudgeSign * 2.2 * dt;
+            }
 
             if (vn < -35 && this.impactCooldown <= 0) {
               this.impactCooldown = 0.14;
@@ -1687,37 +2005,33 @@
               }
             }
           } else {
-            // Solid Tree Trunk or Alpine Boulder collision with glancing slide-around assist
-            const minDist = obs.collideR + 12.5;
+            // Solid Tree Trunk or Alpine Boulder collision
+            const minDist = obs.collideR + 13.0;
             if (dist < minDist && dist > 0.001) {
+              this.blockedByObstacle = true;
               const nx = dx / dist;
               const ny = dy / dist;
-              this.x = obs.x + nx * (minDist + 0.6);
-              this.y = obs.y + ny * (minDist + 0.6);
+              this.x = obs.x + nx * (minDist + 1.0);
+              this.y = obs.y + ny * (minDist + 1.0);
 
               const vn = this.vx * nx + this.vy * ny;
               if (vn < 0) {
-                this.vx -= 1.06 * vn * nx;
-                this.vy -= 1.06 * vn * ny;
-                this.vx *= 0.85;
-                this.vy *= 0.85;
+                this.vx -= 1.05 * vn * nx;
+                this.vy -= 1.05 * vn * ny;
+                this.vx *= 0.78;
+                this.vy *= 0.78;
               }
 
-              // Deflect car nose and slide tangentially around the trunk/boulder toward the road so it never pins nose-on
-              const toRoadX = currentSample.mx - obs.x;
-              const toRoadY = currentSample.my - obs.y;
-              const tang1X = -ny;
-              const tang1Y = nx;
-              const preferSign = (tang1X * toRoadX + tang1Y * toRoadY) >= 0 ? 1 : -1;
-              const slideX = tang1X * preferSign;
-              const slideY = tang1Y * preferSign;
-
-              this.vx += slideX * 36;
-              this.vy += slideY * 36;
-              this.angle += preferSign * 3.0 * dt;
+              // If user is holding brake/reverse while against a tree or rock, give an immediate reverse push away from the trunk
+              if (this.braking) {
+                this.reversing = true;
+                const backSpeed = Math.max(95, Math.hypot(this.vx, this.vy));
+                this.vx = -cosA * backSpeed + nx * 25;
+                this.vy = -sinA * backSpeed + ny * 25;
+              }
 
               if (vn < -40 && this.impactCooldown <= 0) {
-                this.impactCooldown = 0.16;
+                this.impactCooldown = 0.18;
                 audio.playImpact(true);
                 game.triggerCameraImpulse(-nx * 5.5, -ny * 5.5);
                 if (obs.type === 'tree') {
@@ -1730,8 +2044,9 @@
           }
         }
 
-        // 8. Slip Intensity, Gears, Persistent Drift Marks & Rooster Tails
-        const slipThreshold = 110 * (1 - blend) + 68 * blend;
+        this.speed = Math.hypot(this.vx, this.vy);
+
+        // 8. Slip Intensity, Gears, Persistent Drift Marks & Surface-Specific Rooster Tails
         this.slipAngle = Math.min(1, Math.abs(lateralVel) / slipThreshold);
 
         const normSpeed = Math.min(1, Math.max(0, this.speed / 480));
@@ -1763,18 +2078,24 @@
         const frX = this.x + cosA * frontOffset + sinA * frontTrackHalf;
         const frY = this.y + sinA * frontOffset - cosA * frontTrackHalf;
 
-        const shouldLeaveMark =
-          (this.braking && this.speed > 70) ||
-          (this.surface === 'gravel' && this.speed > 65 && this.slipAngle > 0.14) ||
-          (this.surface === 'tarmac' && this.speed > 95 && this.slipAngle > 0.22) ||
-          (this.surface === 'offtrack' && this.speed > 50);
+        // Cracked tarmac skips slightly over bumps when leaving tire marks
+        const skipMarkOnCracks = this.surface === 'cracked_tarmac' && Math.sin(this.bumpPhase * 3.2) > 0.55 && !this.braking;
+
+        const shouldLeaveMark = !skipMarkOnCracks && (
+          (this.braking && this.speed > 68) ||
+          (this.surface === 'gravel' && this.speed > 55 && this.slipAngle > 0.11) ||
+          (this.surface === 'dirt' && this.speed > 65 && this.slipAngle > 0.15) ||
+          (this.surface === 'cracked_tarmac' && this.speed > 85 && this.slipAngle > 0.19) ||
+          (this.surface === 'tarmac' && this.speed > 95 && this.slipAngle > 0.23) ||
+          (this.surface === 'offtrack' && this.speed > 50)
+        );
 
         if (shouldLeaveMark && this.prevRearLeft) {
           const alpha = Math.min(1, 0.25 + this.slipAngle * 0.85);
           world.stampTireMark(this.prevRearLeft.x, this.prevRearLeft.y, rlX, rlY, this.surface, alpha);
           world.stampTireMark(this.prevRearRight.x, this.prevRearRight.y, rrX, rrY, this.surface, alpha);
 
-          if (this.slipAngle > 0.38 && this.prevFrontLeft) {
+          if (this.slipAngle > 0.34 && this.prevFrontLeft) {
             world.stampTireMark(this.prevFrontLeft.x, this.prevFrontLeft.y, flX, flY, this.surface, alpha * 0.6);
             world.stampTireMark(this.prevFrontRight.x, this.prevFrontRight.y, frX, frY, this.surface, alpha * 0.6);
           }
@@ -1785,13 +2106,25 @@
         this.prevFrontLeft = { x: flX, y: flY };
         this.prevFrontRight = { x: frX, y: frY };
 
-        if ((this.surface === 'gravel' || this.surface === 'offtrack') && this.speed > 60) {
-          const spawnChance = 0.5 + this.slipAngle * 0.5;
+        // Emit surface-specific particle plumes (Gravel Scree, Sienna Dirt Clods, Cracked Asphalt Crumbs, Tarmac Smoke)
+        if (this.surface === 'gravel' && this.speed > 52) {
+          const spawnChance = 0.58 + this.slipAngle * 0.42;
           if (Math.random() < spawnChance) {
-            const kickSpeed = (45 + this.slipAngle * 75) * (this.reversing ? -0.6 : 1);
-            particles.spawn(rlX, rlY, -cosA * kickSpeed + (Math.random() - 0.5) * 45, -sinA * kickSpeed + (Math.random() - 0.5) * 45, this.surface, this.slipAngle);
-            particles.spawn(rrX, rrY, -cosA * kickSpeed + (Math.random() - 0.5) * 45, -sinA * kickSpeed + (Math.random() - 0.5) * 45, this.surface, this.slipAngle);
+            const kickSpeed = (52 + this.slipAngle * 88) * (this.reversing ? -0.6 : 1);
+            particles.spawn(rlX, rlY, -cosA * kickSpeed + (Math.random() - 0.5) * 55, -sinA * kickSpeed + (Math.random() - 0.5) * 55, 'gravel', this.slipAngle);
+            particles.spawn(rrX, rrY, -cosA * kickSpeed + (Math.random() - 0.5) * 55, -sinA * kickSpeed + (Math.random() - 0.5) * 55, 'gravel', this.slipAngle);
           }
+        } else if ((this.surface === 'dirt' || this.surface === 'offtrack') && this.speed > 58) {
+          const spawnChance = 0.46 + this.slipAngle * 0.48;
+          if (Math.random() < spawnChance) {
+            const kickSpeed = (42 + this.slipAngle * 72) * (this.reversing ? -0.6 : 1);
+            particles.spawn(rlX, rlY, -cosA * kickSpeed + (Math.random() - 0.5) * 42, -sinA * kickSpeed + (Math.random() - 0.5) * 42, 'dirt', this.slipAngle);
+            particles.spawn(rrX, rrY, -cosA * kickSpeed + (Math.random() - 0.5) * 42, -sinA * kickSpeed + (Math.random() - 0.5) * 42, 'dirt', this.slipAngle);
+          }
+        } else if (this.surface === 'cracked_tarmac' && (this.slipAngle > 0.18 || this.speed > 210) && Math.random() < 0.55) {
+          const kickSpeed = 36 + this.slipAngle * 45;
+          particles.spawn(rlX, rlY, -cosA * kickSpeed + (Math.random() - 0.5) * 30, -sinA * kickSpeed + (Math.random() - 0.5) * 30, 'cracked_tarmac', this.slipAngle);
+          particles.spawn(rrX, rrY, -cosA * kickSpeed + (Math.random() - 0.5) * 30, -sinA * kickSpeed + (Math.random() - 0.5) * 30, 'cracked_tarmac', this.slipAngle);
         } else if (this.surface === 'tarmac' && this.slipAngle > 0.25 && Math.random() < 0.65) {
           particles.spawn(rlX, rlY, -cosA * 32 + (Math.random() - 0.5) * 24, -sinA * 32 + (Math.random() - 0.5) * 24, 'tarmac', this.slipAngle);
           particles.spawn(rrX, rrY, -cosA * 32 + (Math.random() - 0.5) * 24, -sinA * 32 + (Math.random() - 0.5) * 24, 'tarmac', this.slipAngle);
@@ -1805,21 +2138,35 @@
       }
 
       spawn(x, y, vx, vy, surface, slipIntensity = 0.3) {
-        if (this.list.length > 150) this.list.shift();
+        if (this.list.length > 165) this.list.shift();
         let color = PALETTE.gravelDark;
+        let size = 3 + Math.random() * 4.5 + slipIntensity * 2.5;
+        let maxLife = 0.26 + Math.random() * 0.24 + slipIntensity * 0.12;
+
         if (surface === 'gravel') {
-          color = Math.random() > 0.45 ? PALETTE.paperDark : PALETTE.gravelDark;
+          const pick = Math.random();
+          color = pick < 0.38 ? PALETTE.gravelLight : (pick < 0.75 ? PALETTE.gravelDark : '#7E7262');
+          size = 3.2 + Math.random() * 4.8 + slipIntensity * 2.8;
+          maxLife = 0.30 + Math.random() * 0.26 + slipIntensity * 0.14;
+        } else if (surface === 'dirt') {
+          color = Math.random() > 0.42 ? PALETTE.dirtDark : PALETTE.dirtLight;
+          size = 3.0 + Math.random() * 4.2 + slipIntensity * 2.2;
+        } else if (surface === 'cracked_tarmac') {
+          color = Math.random() > 0.45 ? '#363430' : '#AEA496';
+          size = 2.4 + Math.random() * 3.2;
+          maxLife = 0.20 + Math.random() * 0.18;
         } else if (surface === 'tarmac') {
           color = PALETTE.cream;
         }
+
         this.list.push({
           x,
           y,
           vx,
           vy,
           life: 0,
-          maxLife: 0.26 + Math.random() * 0.24 + slipIntensity * 0.12,
-          size: 3 + Math.random() * 4.5 + slipIntensity * 2.5,
+          maxLife,
+          size,
           color
         });
       }
@@ -2245,13 +2592,11 @@
         document.getElementById('gearLabel').textContent = this.car.gear === 'R' ? 'REV' : `G${this.car.gear}`;
 
         const surfEl = document.getElementById('surfaceBadge');
-        const isDrifting = this.car.slipAngle > 0.24 && this.car.speed > 80;
-        if (this.car.surface === 'tarmac') {
-          surfEl.textContent = isDrifting ? 'TARMAC • SLIDE' : 'TARMAC';
-          surfEl.style.color = isDrifting ? PALETTE.terracotta : PALETTE.ink;
-        } else if (this.car.surface === 'gravel') {
-          surfEl.textContent = isDrifting ? 'DIRT • DRIFT' : 'LOOSE DIRT';
-          surfEl.style.color = PALETTE.terracotta;
+        const isDrifting = this.car.slipAngle > 0.22 && this.car.speed > 75;
+        const spec = SURFACE_SPECS[this.car.surface];
+        if (spec) {
+          surfEl.textContent = isDrifting ? spec.slideLabel : spec.label;
+          surfEl.style.color = isDrifting ? PALETTE.terracotta : spec.color;
         } else {
           surfEl.textContent = 'OFF-TRACK';
           surfEl.style.color = PALETTE.terracotta;
@@ -2576,17 +2921,22 @@
         if (frameTime > 0.1) frameTime = 0.1;
         lastTime = now;
 
-        accumulator += frameTime;
-        while (accumulator >= FIXED_DT) {
-          game.stepPhysics(FIXED_DT);
-          accumulator -= FIXED_DT;
-        }
+        try {
+          accumulator += frameTime;
+          while (accumulator >= FIXED_DT) {
+            game.stepPhysics(FIXED_DT);
+            accumulator -= FIXED_DT;
+          }
 
-        game.render();
+          game.render();
 
-        hudCounter++;
-        if (hudCounter % 3 === 0) {
-          game.updateHUD();
+          hudCounter++;
+          if (hudCounter % 3 === 0) {
+            game.updateHUD();
+          }
+        } catch (err) {
+          console.error('Physics/Render step error:', err);
+          accumulator = 0;
         }
 
         requestAnimationFrame(gameLoop);
