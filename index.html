@@ -371,7 +371,7 @@
 
     const SURFACE_KEYS = ['tarmac', 'cracked_tarmac', 'dirt', 'gravel'];
 
-    function blendSurfaceRGB(weights) {
+    function blendSurfaceRGBValues(weights) {
       let r = 0, g = 0, b = 0;
       for (const k of SURFACE_KEYS) {
         const w = weights[k] || 0;
@@ -382,7 +382,11 @@
           b += rgb[2] * w;
         }
       }
-      return `rgb(${Math.round(r)},${Math.round(g)},${Math.round(b)})`;
+      return [Math.round(r), Math.round(g), Math.round(b)];
+    }
+
+    function rgbToCss(rgb) {
+      return `rgb(${rgb[0]},${rgb[1]},${rgb[2]})`;
     }
 
     // Procedural Web Audio Synthesizer (Zero External Assets)
@@ -901,8 +905,8 @@
           s.uy = s.cy / s.effW;
         }
 
-        // Calculate signed curvature and smooth 4-surface transition weights over +/- 10 samples
-        const blendWindow = 10;
+        // Calculate signed curvature and smooth cosine-eased 4-surface transition weights over +/- 14 samples
+        const blendWindow = 14;
         for (let i = 0; i < this.samples.length; i++) {
           const prev = this.samples[Math.max(0, i - 2)];
           const next = this.samples[Math.min(this.samples.length - 1, i + 2)];
@@ -911,7 +915,9 @@
           const weights = { tarmac: 0, cracked_tarmac: 0, dirt: 0, gravel: 0 };
           let totalWeight = 0;
           for (let k = Math.max(0, i - blendWindow); k <= Math.min(this.samples.length - 1, i + blendWindow); k++) {
-            const weight = 1 - Math.abs(k - i) / (blendWindow + 1);
+            const normDist = Math.abs(k - i) / (blendWindow + 1);
+            // Smooth cosine bell window so transitions ease in and out with zero derivative jumps
+            const weight = 0.5 * (1 + Math.cos(normDist * Math.PI));
             const surf = this.samples[k].surface;
             weights[surf] = (weights[surf] || 0) + weight;
             totalWeight += weight;
@@ -920,7 +926,20 @@
             weights[key] /= totalWeight;
           }
           this.samples[i].weights = weights;
+          this.samples[i].rgb = blendSurfaceRGBValues(weights);
           this.samples[i].dirtBlend = weights.dirt + weights.gravel;
+        }
+
+        // Collect all surface transition indices for bespoke physical transition rendering
+        this.transitions = [];
+        for (let i = 4; i < this.samples.length - 4; i++) {
+          if (this.samples[i].surface !== this.samples[i - 1].surface) {
+            this.transitions.push({
+              index: i,
+              from: this.samples[i - 1].surface,
+              to: this.samples[i].surface
+            });
+          }
         }
 
         // Sector indices (S1 at 33%, S2 at 66%, Finish at 97%)
@@ -988,8 +1007,17 @@
           }
         }
 
-        // Helper to verify an obstacle doesn't overlap the variable-width road ribbon
+        // Helper to verify an obstacle doesn't overlap the variable-width road ribbon OR the offscreen canvas border seam
         const isSafeFromTrack = (ox, oy, pad) => {
+          const borderMargin = pad + 38;
+          if (
+            ox < borderMargin ||
+            ox > this.worldSize - borderMargin ||
+            oy < borderMargin ||
+            oy > this.worldSize - borderMargin
+          ) {
+            return false;
+          }
           for (let j = 0; j < this.samples.length; j += 3) {
             const check = this.samples[j];
             if (Math.hypot(ox - check.x, oy - check.y) < check.w * 0.5 + pad) {
@@ -1146,65 +1174,57 @@
         ctx.closePath();
         ctx.fill();
 
-        // 3. Seamless Opaque Track Ribbon (Smoothly blends all 4 surfaces without overlap bands)
+        // 3. Seamless Curve-Following Base Track Ribbon (Hardware LinearGradient per transition quad so zero seams or steps can exist)
         for (let i = 0; i < this.samples.length - 1; i++) {
           const s1 = this.samples[i];
           const s2 = this.samples[i + 1];
-          const avgWeights = {
-            tarmac: (s1.weights.tarmac + s2.weights.tarmac) * 0.5,
-            cracked_tarmac: (s1.weights.cracked_tarmac + s2.weights.cracked_tarmac) * 0.5,
-            dirt: (s1.weights.dirt + s2.weights.dirt) * 0.5,
-            gravel: (s1.weights.gravel + s2.weights.gravel) * 0.5
-          };
-          fillOpaqueQuad(s1, s2, -0.5, 0.5, blendSurfaceRGB(avgWeights));
+          const c1 = rgbToCss(s1.rgb);
+          const c2 = rgbToCss(s2.rgb);
+
+          if (c1 === c2) {
+            fillOpaqueQuad(s1, s2, -0.5, 0.5, c1);
+          } else {
+            const grad = ctx.createLinearGradient(s1.mx, s1.my, s2.mx, s2.my);
+            grad.addColorStop(0, c1);
+            grad.addColorStop(1, c2);
+            fillOpaqueQuad(s1, s2, -0.5, 0.5, grad);
+          }
         }
 
-        // 4A. Continuous Painted White/Cream Edge Stripes on Smooth Tarmac Sections
-        ctx.strokeStyle = '#DED8CE';
-        ctx.lineWidth = 2.2;
+        // 3B. Organic Multi-Layered Surface Transitions (Double-Tapered Wheel Ruts, Eroded Islands & Interlocking Aggregate)
+        for (const tr of this.transitions) {
+          this.drawSurfaceTransitionZone(ctx, tr.index, tr.from, tr.to, ptAt, hash);
+        }
+
+        // 4A. Feathered Painted White/Cream Edge Stripes on Smooth Tarmac Sections (Naturally wears away into transitions)
         for (const side of [-0.44, 0.44]) {
-          ctx.beginPath();
-          let drawing = false;
-          for (let i = 0; i < this.samples.length; i++) {
-            const s = this.samples[i];
-            if (s.weights.tarmac > 0.55) {
-              const p = ptAt(s, side);
-              if (!drawing) {
-                ctx.moveTo(p.x, p.y);
-                drawing = true;
-              } else {
-                ctx.lineTo(p.x, p.y);
+          for (let i = 0; i < this.samples.length - 1; i++) {
+            const s1 = this.samples[i];
+            const s2 = this.samples[i + 1];
+            const wTar = (s1.weights.tarmac + s2.weights.tarmac) * 0.5;
+            if (wTar > 0.18) {
+              // In the transition zone (wTar < 0.78), break the line into weathered dashes that thin out smoothly
+              if (wTar < 0.78 && hash(i, side > 0 ? 1 : 2, 19) > (wTar - 0.12) * 1.45) {
+                continue;
               }
-            } else {
-              drawing = false;
+              const alpha = Math.min(1, (wTar - 0.15) / 0.55);
+              const p1 = ptAt(s1, side);
+              const p2 = ptAt(s2, side);
+              ctx.strokeStyle = `rgba(222, 216, 206, ${alpha.toFixed(2)})`;
+              ctx.lineWidth = 1.1 + 1.2 * alpha;
+              ctx.beginPath();
+              ctx.moveTo(p1.x, p1.y);
+              ctx.lineTo(p2.x, p2.y);
+              ctx.stroke();
             }
           }
-          ctx.stroke();
         }
 
         // 4B. Detailed Non-Banded Surface Textures for All 4 Surfaces
         for (let i = 2; i < this.samples.length - 2; i++) {
           const s = this.samples[i];
           const next = this.samples[i + 1];
-          const prev = this.samples[i - 1];
           const w = s.weights;
-          const isTransitionCenter = s.surface !== prev.surface;
-
-          // Paint crisp roadside transition curb blocks on the outer edges where surface changes
-          if (isTransitionCenter) {
-            for (const side of [-1, 1]) {
-              const edgePt = ptAt(s, side * 0.48);
-              ctx.save();
-              ctx.translate(edgePt.x, edgePt.y);
-              ctx.rotate(Math.atan2(s.ty, s.tx));
-              ctx.fillStyle = PALETTE.terracotta;
-              ctx.strokeStyle = PALETTE.ink;
-              ctx.lineWidth = 1.5;
-              ctx.fillRect(-14, -3.5, 28, 7);
-              ctx.strokeRect(-14, -3.5, 28, 7);
-              ctx.restore();
-            }
-          }
 
           // --- SURFACE 1: SMOOTH TARMAC (Hot-mix macadam aggregate, quartz sparkle & centerline) ---
           if (w.tarmac > 0.08) {
@@ -1460,6 +1480,170 @@
         for (const obs of this.obstacles) {
           if (obs.type === 'tree') {
             this.drawPineTree(ctx, obs);
+          }
+        }
+      }
+
+      /**
+       * Renders an organic, seam-free physical transition between two road surfaces.
+       * All wheel-track streaks and material patches taper to 0 at both ends so no hard line can ever appear.
+       */
+      drawSurfaceTransitionZone(ctx, idx, fromSurf, toSurf, ptAt, hash) {
+        const isPaved = (surf) => surf === 'tarmac' || surf === 'cracked_tarmac';
+        const fromPaved = isPaved(fromSurf);
+        const toPaved = isPaved(toSurf);
+        const span = 12; // +/- 12 samples (~385px organic intermingling zone)
+
+        // Helper: draws a smooth double-ended tapered ribbon (0 width at iStart AND 0 width at iEnd)
+        const drawDoubleTaperedTrack = (iStart, iEnd, uBase, maxHalfW, color, alphaMax = 0.65) => {
+          const lo = Math.max(1, Math.min(iStart, iEnd));
+          const hi = Math.min(this.samples.length - 2, Math.max(iStart, iEnd));
+          const count = hi - lo;
+          if (count < 2) return;
+
+          ctx.save();
+          ctx.lineCap = 'round';
+          for (let k = lo; k < hi; k++) {
+            const t = (k - lo) / count;
+            // Sine bell curve: 0 at start, 1 in middle, 0 at end (zero flat cutoffs!)
+            const bell = Math.sin(t * Math.PI);
+            if (bell < 0.04) continue;
+
+            const s1 = this.samples[k];
+            const s2 = this.samples[k + 1];
+            const wobble1 = (hash(k, Math.round((uBase + 1) * 50), 70) - 0.5) * 0.025;
+            const wobble2 = (hash(k + 1, Math.round((uBase + 1) * 50), 70) - 0.5) * 0.025;
+            const p1 = ptAt(s1, uBase + wobble1);
+            const p2 = ptAt(s2, uBase + wobble2);
+
+            ctx.globalAlpha = alphaMax * bell;
+            ctx.strokeStyle = color;
+            ctx.lineWidth = Math.max(1.2, s1.effW * maxHalfW * 2 * bell);
+            ctx.beginPath();
+            ctx.moveTo(p1.x, p1.y);
+            ctx.lineTo(p2.x, p2.y);
+            ctx.stroke();
+          }
+          ctx.restore();
+        };
+
+        // 1. Double-Tapered Wheel-Track Carryover Streaks in Left & Right Racing Grooves (u = +/- 0.22)
+        const fromSpec = SURFACE_SPECS[fromSurf];
+        const toSpec = SURFACE_SPECS[toSurf];
+        const fromCss = rgbToCss(fromSpec.rgb);
+        const toCss = rgbToCss(toSpec.rgb);
+
+        for (const grooveU of [-0.22, 0.22]) {
+          // Carry material from `fromSurf` forward into `toSurf` along tire grooves
+          drawDoubleTaperedTrack(idx - 8, idx + 11, grooveU, 0.085, fromCss, 0.55);
+          // Carry material from `toSurf` backward into `fromSurf` along outer edges of tire grooves
+          drawDoubleTaperedTrack(idx - 11, idx + 8, grooveU * 1.18, 0.075, toCss, 0.50);
+        }
+
+        // Shoulder & Center Crown Encroachment (Loose material naturally collects on shoulders & center crown)
+        if (!fromPaved || !toPaved) {
+          const looseSurf = !toPaved ? toSurf : fromSurf;
+          const looseColor = looseSurf === 'gravel' ? PALETTE.gravel : PALETTE.dirt;
+          const looseDark = looseSurf === 'gravel' ? PALETTE.gravelDark : PALETTE.dirtDark;
+          for (const shoulderU of [-0.41, 0.0, 0.41]) {
+            drawDoubleTaperedTrack(idx - 11, idx + 11, shoulderU, 0.09, looseDark, 0.42);
+            drawDoubleTaperedTrack(idx - 9, idx + 9, shoulderU, 0.06, looseColor, 0.48);
+          }
+        }
+
+        // 2. Organic Mottled Surface Islands & Graduated Aggregate Across [idx - span, idx + span]
+        const startIdx = Math.max(2, idx - span);
+        const endIdx = Math.min(this.samples.length - 3, idx + span);
+
+        for (let k = startIdx; k <= endIdx; k++) {
+          const s = this.samples[k];
+          const next = this.samples[k + 1];
+          // Normalized position across transition: 0 = deep in `fromSurf`, 0.5 = boundary, 1 = deep in `toSurf`
+          const t = (k - startIdx) / Math.max(1, endIdx - startIdx);
+          const bell = Math.sin(t * Math.PI); // Peaks at 1.0 right at the transition center
+
+          // Scatter organic elliptical surface islands that bridge the two materials without any straight edges
+          const patchCount = Math.ceil(6 * bell);
+          for (let p = 0; p < patchCount; p++) {
+            const u = (hash(k, p, 71) - 0.5) * 0.88;
+            const v = hash(k, p, 72);
+            const p1 = ptAt(s, u);
+            const p2 = ptAt(next, u);
+            const px = p1.x + (p2.x - p1.x) * v;
+            const py = p1.y + (p2.y - p1.y) * v;
+
+            // Bias: wheel tracks (+/- 0.22) favor paved material longer; shoulders & crown favor loose material earlier
+            const inWheelTrack = Math.abs(Math.abs(u) - 0.22) < 0.11;
+            const pickToSurf = hash(k, p, 73) < (t + (inWheelTrack ? -0.12 : 0.12));
+            const patchSurf = pickToSurf ? toSurf : fromSurf;
+
+            const rx = (4 + hash(k, p, 74) * 9) * (0.45 + 0.55 * bell);
+            const ry = (2.5 + hash(k, p, 75) * 4.5) * (0.45 + 0.55 * bell);
+            const ang = Math.atan2(s.ty, s.tx) + (hash(k, p, 76) - 0.5) * 0.35;
+
+            ctx.save();
+            ctx.translate(px, py);
+            ctx.rotate(ang);
+            ctx.globalAlpha = 0.35 + 0.45 * bell;
+
+            if (patchSurf === 'tarmac') {
+              ctx.fillStyle = PALETTE.asphalt;
+            } else if (patchSurf === 'cracked_tarmac') {
+              ctx.fillStyle = hash(k, p, 77) > 0.5 ? PALETTE.cracked : PALETTE.crackedPatch;
+            } else if (patchSurf === 'dirt') {
+              ctx.fillStyle = hash(k, p, 77) > 0.45 ? PALETTE.dirt : PALETTE.dirtDark;
+            } else {
+              ctx.fillStyle = hash(k, p, 77) > 0.45 ? PALETTE.gravel : PALETTE.gravelDark;
+            }
+
+            ctx.beginPath();
+            ctx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+          }
+
+          // If transitioning to/from Cracked Asphalt or Tarmac, weave longitudinal stress cracks across the zone
+          if ((fromPaved || toPaved) && hash(k, 0, 78) < 0.55 * bell) {
+            const uCrack = (hash(k, 1, 79) - 0.5) * 0.80;
+            const cPt = ptAt(s, uCrack);
+            const baseAng = Math.atan2(s.ty, s.tx) + (hash(k, 2, 80) - 0.5) * 0.9;
+            ctx.save();
+            ctx.strokeStyle = 'rgba(24, 23, 21, 0.55)';
+            ctx.lineWidth = 1.2;
+            ctx.beginPath();
+            let cx = cPt.x, cy = cPt.y;
+            ctx.moveTo(cx, cy);
+            for (let seg = 0; seg < 3; seg++) {
+              const a = baseAng + (hash(k, seg, 81) - 0.5) * 0.8;
+              const len = 5 + hash(k, seg, 82) * 6;
+              cx += Math.cos(a) * len;
+              cy += Math.sin(a) * len;
+              ctx.lineTo(cx, cy);
+            }
+            ctx.stroke();
+            ctx.restore();
+          }
+
+          // Fine scattered stones, soil clods & asphalt crumbs feathering across the transition zone
+          const grainCount = Math.ceil(14 * bell);
+          for (let g = 0; g < grainCount; g++) {
+            const uG = (hash(k, g, 83) - 0.5) * 0.92;
+            const vG = hash(k, g, 84);
+            const p1 = ptAt(s, uG);
+            const p2 = ptAt(next, uG);
+            const gx = p1.x + (p2.x - p1.x) * vG;
+            const gy = p1.y + (p2.y - p1.y) * vG;
+            const sz = 1.6 + hash(k, g, 85) * 2.4;
+
+            if (!fromPaved || !toPaved) {
+              const isGravel = fromSurf === 'gravel' || toSurf === 'gravel';
+              ctx.fillStyle = g % 3 === 0
+                ? (isGravel ? PALETTE.gravelLight : PALETTE.dirtLight)
+                : (g % 2 === 0 ? (isGravel ? PALETTE.gravelDark : PALETTE.dirtDark) : '#2B2927');
+            } else {
+              ctx.fillStyle = g % 2 === 0 ? '#23211F' : '#635E56';
+            }
+            ctx.fillRect(gx - sz * 0.5, gy - sz * 0.5, sz, sz * 0.85);
           }
         }
       }
@@ -2449,14 +2633,17 @@
         this.car.update(dt, this.input, this.world, this.particles, this.audio);
         this.particles.update(dt);
 
-        // Record ghost frame at 20Hz
+        // Record ghost telemetry at 60Hz for silky-smooth sub-frame interpolation
+        const GHOST_STEP = 1 / 60;
         this.ghostSampleTimer += dt;
-        if (this.ghostSampleTimer >= 0.05) {
-          this.ghostSampleTimer -= 0.05;
+        if (this.ghostSampleTimer >= GHOST_STEP) {
+          this.ghostSampleTimer -= GHOST_STEP;
           this.currentGhost.push({
             x: this.car.x,
             y: this.car.y,
-            a: this.car.angle
+            a: this.car.angle,
+            steer: this.car.steer,
+            drift: this.car.driftAngle
           });
         }
 
@@ -2608,10 +2795,10 @@
        * so the terrain NEVER ends or shows a hard edge anywhere.
        */
       drawInfiniteTopography(ctx, camX, camY, viewW, viewH) {
-        const startX = Math.floor((camX - viewW * 0.65) / 360) * 360;
-        const endX = Math.ceil((camX + viewW * 0.65) / 360) * 360;
-        const startY = Math.floor((camY - viewH * 0.65) / 360) * 360;
-        const endY = Math.ceil((camY + viewH * 0.65) / 360) * 360;
+        const startX = Math.floor((camX - viewW * 0.85) / 360) * 360;
+        const endX = Math.ceil((camX + viewW * 0.85) / 360) * 360;
+        const startY = Math.floor((camY - viewH * 0.85) / 360) * 360;
+        const endY = Math.ceil((camY + viewH * 0.85) / 360) * 360;
 
         // 1. Subtle Surveyor Grid Lines & Crosshairs
         ctx.strokeStyle = 'rgba(206, 191, 169, 0.42)';
@@ -2631,8 +2818,8 @@
         ctx.strokeStyle = PALETTE.paperDark;
         ctx.lineWidth = 1.6;
         const contourSpacing = 180;
-        const firstContourY = Math.floor((camY - viewH * 0.7) / contourSpacing) * contourSpacing;
-        const lastContourY = Math.ceil((camY + viewH * 0.7) / contourSpacing) * contourSpacing;
+        const firstContourY = Math.floor((camY - viewH * 0.85) / contourSpacing) * contourSpacing;
+        const lastContourY = Math.ceil((camY + viewH * 0.85) / contourSpacing) * contourSpacing;
         const stepX = 90;
 
         for (let baseY = firstContourY; baseY <= lastContourY; baseY += contourSpacing) {
@@ -2656,7 +2843,8 @@
           ctx.stroke();
         }
 
-        // 3. Surveyor Crosshair Ticks (+) & Out-of-Bounds Distant Alpine Scrub (so outside 0..4600 is lush & populated)
+        // 3. Surveyor Crosshair Ticks (+) & Out-of-Bounds Distant Alpine Scrub
+        const W = this.world.worldSize;
         for (let gx = startX; gx <= endX; gx += 360) {
           for (let gy = startY; gy <= endY; gy += 360) {
             ctx.strokeStyle = 'rgba(30, 30, 28, 0.22)';
@@ -2682,13 +2870,13 @@
             ctx.lineTo(tx + 5, ty + 2);
             ctx.stroke();
 
-            // If this cell lies outside the 4600x4600 baked stage bounds (or near the outer border),
-            // draw procedural alpine trees & rocks so the world visually continues forever!
-            const W = this.world.worldSize;
-            if (gx < 220 || gx > W - 220 || gy < 220 || gy > W - 220) {
-              const px = gx + ((cellHash * 7) % 280) - 140;
-              const py = gy + ((cellHash * 19) % 280) - 140;
-              const pr = 18 + (cellHash % 14);
+            // Place procedural alpine trees outside the 4600x4600 baked stage bounds with a safe buffer
+            // so trees never overlap a seam or get clipped
+            const px = gx + ((cellHash * 7) % 240) - 120;
+            const py = gy + ((cellHash * 19) % 240) - 120;
+            const pr = 18 + (cellHash % 14);
+            const safeMargin = pr + 24;
+            if (px < -safeMargin || px > W + safeMargin || py < -safeMargin || py > W + safeMargin) {
               this.world.drawPineTree(ctx, {
                 x: px,
                 y: py,
@@ -2725,19 +2913,31 @@
         // 0. Draw Seamless Infinite Topographic Map Background
         this.drawInfiniteTopography(ctx, camX, camY, w / zoom, h / zoom);
 
-        // 1. Draw Baked World (Variable-Width Track, Feathered Transitions, Trees, Bushes, Rocks & Skidmarks)
+        // 1. Draw Baked World (Variable-Width Track, Physical Surface Transitions, Trees, Bushes, Rocks & Skidmarks)
         ctx.drawImage(this.world.canvas, 0, 0);
 
         // 2. Draw Dust, Gravel & Foliage Burst Particles
         this.particles.draw(ctx);
 
-        // 3. Draw Personal Best Blueprint Ghost Car
+        // 3. Draw Smoothly Interpolated Personal Best Blueprint Ghost Car
         const best = this.bestRecords[this.currentStage];
         if (best && best.ghost.length > 0 && this.state === 'running') {
-          const ghostIdx = Math.min(best.ghost.length - 1, Math.floor(this.runTime * 20));
-          const g = best.ghost[ghostIdx];
-          if (g) {
-            this.drawGhostCar(ctx, g.x, g.y, g.a);
+          const exactFrame = this.runTime * 60;
+          const idx0 = Math.min(best.ghost.length - 1, Math.floor(exactFrame));
+          const idx1 = Math.min(best.ghost.length - 1, idx0 + 1);
+          const frac = Math.max(0, Math.min(1, exactFrame - idx0));
+          const g0 = best.ghost[idx0];
+          const g1 = best.ghost[idx1];
+
+          if (g0 && g1) {
+            const gx = g0.x + (g1.x - g0.x) * frac;
+            const gy = g0.y + (g1.y - g0.y) * frac;
+            // Shortest-path angular interpolation so wrapping past +/- PI never spins the ghost
+            const da = Math.atan2(Math.sin(g1.a - g0.a), Math.cos(g1.a - g0.a));
+            const ga = g0.a + da * frac;
+            const gSteer = (g0.steer || 0) + ((g1.steer || 0) - (g0.steer || 0)) * frac;
+            const gDrift = (g0.drift || 0) + ((g1.drift || 0) - (g0.drift || 0)) * frac;
+            this.drawGhostCar(ctx, gx, gy, ga, gSteer, gDrift);
           }
         }
 
@@ -2747,22 +2947,81 @@
         ctx.restore();
       }
 
-      drawGhostCar(ctx, x, y, angle) {
+      drawGhostCar(ctx, x, y, angle, steer = 0, driftAngle = 0) {
         ctx.save();
         ctx.translate(x, y);
         ctx.rotate(angle);
-        ctx.strokeStyle = PALETTE.cream;
+
+        // Translucent Swiss Chronometer Blueprint Ghost Car
+        ctx.globalAlpha = 0.58;
+
+        // Articulated Ghost Tires
+        const wheelAngle = steer * 0.44 - driftAngle * 0.25;
+        ctx.fillStyle = PALETTE.asphalt;
+        ctx.fillRect(-16, -13.5, 9, 4.5);
+        ctx.fillRect(-16, 9, 9, 4.5);
+
+        ctx.save();
+        ctx.translate(12, -11);
+        ctx.rotate(wheelAngle);
+        ctx.fillRect(-4.5, -2.2, 9, 4.4);
+        ctx.restore();
+
+        ctx.save();
+        ctx.translate(12, 11);
+        ctx.rotate(wheelAngle);
+        ctx.fillRect(-4.5, -2.2, 9, 4.4);
+        ctx.restore();
+
+        // Sculpted Widebody Ghost Chassis Fill & Crisp Outline
+        ctx.fillStyle = PALETTE.cream;
+        ctx.strokeStyle = PALETTE.pine;
         ctx.lineWidth = 1.8;
-        ctx.setLineDash([4, 4]);
         ctx.beginPath();
-        ctx.moveTo(-20, -11);
-        ctx.lineTo(14, -10);
+        ctx.moveTo(-20, -9.5);
+        ctx.lineTo(-17, -12);
+        ctx.lineTo(-7, -12);
+        ctx.lineTo(-4, -9.5);
+        ctx.lineTo(7, -9.5);
+        ctx.lineTo(10, -11.5);
+        ctx.lineTo(16, -10.5);
         ctx.lineTo(22, -6);
         ctx.lineTo(22, 6);
-        ctx.lineTo(14, 10);
-        ctx.lineTo(-20, 11);
+        ctx.lineTo(16, 10.5);
+        ctx.lineTo(10, 11.5);
+        ctx.lineTo(7, 9.5);
+        ctx.lineTo(-4, 9.5);
+        ctx.lineTo(-7, 12);
+        ctx.lineTo(-17, 12);
+        ctx.lineTo(-20, 9.5);
         ctx.closePath();
+        ctx.fill();
         ctx.stroke();
+
+        // Blueprint Windshield Visor & Center Racing Stripe
+        ctx.fillStyle = PALETTE.pine;
+        ctx.beginPath();
+        ctx.moveTo(4, -7);
+        ctx.lineTo(7.5, -5);
+        ctx.lineTo(7.5, 5);
+        ctx.lineTo(4, 7);
+        ctx.lineTo(-1, 6);
+        ctx.lineTo(-1, -6);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.strokeStyle = PALETTE.pine;
+        ctx.lineWidth = 1.4;
+        ctx.setLineDash([3, 3]);
+        ctx.beginPath();
+        ctx.moveTo(-20, 0);
+        ctx.lineTo(21, 0);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Ghost Rear Wing
+        ctx.strokeRect(-21, -9.5, 3.5, 19);
+
         ctx.restore();
       }
 
