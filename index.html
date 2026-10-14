@@ -135,9 +135,14 @@
         <span id="speedLabel">000 KM/H</span>
       </div>
     </div>
+
+    <!-- Course Warning Banner (Appears if trying to cross finish early or off-course) -->
+    <div id="courseNotice" class="hidden self-center bg-[#C85A32] text-[#F4F1EA] border-2 border-[#1E1E1C] px-3 py-1 text-[10px] sm:text-xs font-bold uppercase tracking-wider shadow-[2px_2px_0px_#1E1E1C]">
+      COMPLETE ALL 3 SECTORS IN ORDER BEFORE FINISH
+    </div>
   </header>
 
-  <!-- Stage Selection & Instructions Drawer (Ultra-Compact Zero-Scroll Layout) -->
+  <!-- Stage Selection & Instructions Drawer -->
   <div id="stageModal" class="fixed inset-0 z-30 bg-[#1E1E1C]/40 flex items-center justify-center p-2.5">
     <div class="print-card w-full max-w-md p-2.5 sm:p-3.5 flex flex-col gap-1.5">
       <div class="flex items-center justify-between border-b-2 border-[#1E1E1C] pb-1">
@@ -238,33 +243,50 @@
   <script>
     /**
      * TARMAC & GRAVEL — 1970s Swiss Motorsport Rally Trial
-     * Zero-Slop Architecture:
-     * - Locked 120Hz Physics Timestep with authentic slip-angle drifting
-     * - Offscreen Baked World with blended Asphalt-to-Dirt transitions & Persistent Skidmarks
-     * - Procedural Web Audio Synthesizer (Boxer engine + surface scrub)
+     * Upgraded Architecture:
+     * 1. Strict Sequential 3-Sector Checkpoint Validation (cannot trigger Finish until S1, S2, and S3 checkpoints are completed in order)
+     * 2. Polygon Quad Ribbon Rendering with Feathered Asphalt-to-Dirt Transitions (eliminates round lineCap circles at transitions)
+     * 3. Dynamic Variable Track Widths (narrow village bridges & gorges vs. wide gravel drift bowls)
+     * 4. Multi-Layered Alpine Pines, Scrub Bushes & Boulders with Physical Collisions & Foliage Bursts
+     * 5. Infinite Seamless Topographic Map Background (never ends at canvas edges)
      */
 
     const PALETTE = {
       paper: '#EAE4DC',
       paperDark: '#D8CFC2',
+      paperDeep: '#CEBFA9',
       asphalt: '#2B2B2A',
+      asphaltRGB: [43, 43, 42],
       asphaltEdge: '#1E1E1C',
       gravel: '#B8A58E',
+      gravelRGB: [184, 165, 142],
       gravelDark: '#9F8C75',
       gravelLight: '#C9B8A3',
       terracotta: '#C85A32',
       pine: '#3A5A40',
+      pineLight: '#4F7756',
       pineShadow: '#233827',
+      bush: '#587246',
+      bushDark: '#394D2B',
+      rock: '#8C857B',
+      rockDark: '#5E5850',
       cream: '#F4F1EA',
       ink: '#1E1E1C',
       gold: '#D99B26'
     };
 
+    function lerpColorRGB(rgb1, rgb2, t) {
+      const r = Math.round(rgb1[0] + (rgb2[0] - rgb1[0]) * t);
+      const g = Math.round(rgb1[1] + (rgb2[1] - rgb1[1]) * t);
+      const b = Math.round(rgb1[2] + (rgb2[2] - rgb1[2]) * t);
+      return `rgb(${r},${g},${b})`;
+    }
+
     // Procedural Web Audio Synthesizer (Zero External Assets)
     class RallyAudio {
       constructor() {
         this.ctx = null;
-        this.enabled = true; // Enabled by default; auto-unlocks on first tap/click
+        this.enabled = true;
         this.unlocked = false;
         this.engineOsc1 = null;
         this.engineOsc2 = null;
@@ -281,7 +303,6 @@
         if (!AudioCtx) return;
         this.ctx = new AudioCtx();
 
-        // Engine Boxer Synth (Dual detuned oscillators + sub-octave pulse through lowpass)
         this.engineOsc1 = this.ctx.createOscillator();
         this.engineOsc2 = this.ctx.createOscillator();
         this.engineOsc1.type = 'sawtooth';
@@ -303,7 +324,6 @@
         this.engineOsc1.start();
         this.engineOsc2.start();
 
-        // Pink/Brown Noise Generator for Gravel Crunch & Tire Scrub
         const bufferSize = this.ctx.sampleRate * 2;
         const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
         const output = noiseBuffer.getChannelData(0);
@@ -341,7 +361,6 @@
           this.ctx.resume();
         }
         if (!this.unlocked && this.ctx.state === 'running') {
-          // Play a 1-sample silent buffer to satisfy strict iOS Safari audio unlock
           const buf = this.ctx.createBuffer(1, 1, 22050);
           const src = this.ctx.createBufferSource();
           src.buffer = buf;
@@ -381,18 +400,31 @@
         osc.stop(now + 0.17);
       }
 
+      playSplitBeep() {
+        if (!this.enabled || !this.ctx || this.ctx.state !== 'running') return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(880, now);
+        gain.gain.setValueAtTime(0.11, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.11);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.12);
+      }
+
       update(rpmRatio, slipIntensity, surface, speedRatio) {
         if (!this.enabled || !this.ctx || this.ctx.state !== 'running') return;
         const now = this.ctx.currentTime;
 
-        // Audible flat-four / Group 4 rally engine note: 58Hz idle up to 215Hz redline
         const baseFreq = 58 + rpmRatio * 155;
         this.engineOsc1.frequency.setTargetAtTime(baseFreq, now, 0.025);
         this.engineOsc2.frequency.setTargetAtTime(baseFreq * 0.503, now, 0.025);
         this.engineFilter.frequency.setTargetAtTime(240 + rpmRatio * 950, now, 0.03);
         this.engineGain.gain.setTargetAtTime(0.11 + rpmRatio * 0.14, now, 0.03);
 
-        // Tire scrub / gravel texture
         if (surface === 'gravel') {
           const gravelGain = Math.min(0.28, speedRatio * 0.11 + slipIntensity * 0.18);
           this.noiseFilter.frequency.setTargetAtTime(420 + speedRatio * 420 + slipIntensity * 280, now, 0.03);
@@ -404,7 +436,6 @@
           this.noiseFilter.Q.setTargetAtTime(3.6, now, 0.03);
           this.noiseGain.gain.setTargetAtTime(squealGain, now, 0.03);
         } else {
-          // Off-track rough earth
           const roughGain = Math.min(0.25, speedRatio * 0.16);
           this.noiseFilter.frequency.setTargetAtTime(300, now, 0.03);
           this.noiseFilter.Q.setTargetAtTime(0.9, now, 0.03);
@@ -412,170 +443,183 @@
         }
       }
 
-      playImpact() {
+      playImpact(heavy = false) {
         if (!this.enabled || !this.ctx || this.ctx.state !== 'running') return;
+        const now = this.ctx.currentTime;
         const osc = this.ctx.createOscillator();
         const gain = this.ctx.createGain();
-        osc.type = 'sawtooth';
-        osc.frequency.setValueAtTime(130, this.ctx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(38, this.ctx.currentTime + 0.12);
-        gain.gain.setValueAtTime(0.26, this.ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.13);
+        osc.type = heavy ? 'triangle' : 'sawtooth';
+        osc.frequency.setValueAtTime(heavy ? 95 : 130, now);
+        osc.frequency.exponentialRampToValueAtTime(28, now + (heavy ? 0.19 : 0.12));
+        gain.gain.setValueAtTime(heavy ? 0.34 : 0.24, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + (heavy ? 0.20 : 0.13));
         osc.connect(gain);
         gain.connect(this.ctx.destination);
-        osc.start();
-        osc.stop(this.ctx.currentTime + 0.14);
+        osc.start(now);
+        osc.stop(now + (heavy ? 0.21 : 0.14));
+      }
+
+      playBrushScrub() {
+        if (!this.enabled || !this.ctx || this.ctx.state !== 'running') return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(290 + Math.random() * 110, now);
+        osc.frequency.exponentialRampToValueAtTime(110, now + 0.08);
+        gain.gain.setValueAtTime(0.09, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.10);
       }
     }
 
     /**
-     * 5 Long, Technical Special Stage Definitions
-     * Coordinates live in a 4600x4600 world space.
-     * Each point: { x, y, w (track width), surface: 'tarmac' | 'gravel', barrier: 'none' | 'left' | 'right' | 'both' }
+     * 5 Special Stage Definitions with Dramatic Variable Track Widths (`w` from 76px narrow squeezes up to 176px wide drift bowls)
      */
     const STAGES = [
       {
         code: 'SS1',
         name: 'Col de Turini',
-        subtitle: 'Alpine Ascent • Tarmac & Gravel Switchbacks',
+        subtitle: 'Alpine Ascent • Variable Width Switchbacks',
         points: [
-          { x: 420, y: 4100, w: 120, surface: 'tarmac', barrier: 'none' },
+          { x: 420, y: 4100, w: 132, surface: 'tarmac', barrier: 'none' },
           { x: 420, y: 3450, w: 118, surface: 'tarmac', barrier: 'left' },
-          { x: 540, y: 2800, w: 114, surface: 'tarmac', barrier: 'right' },
-          { x: 1080, y: 2520, w: 112, surface: 'tarmac', barrier: 'left' },
-          { x: 1180, y: 1980, w: 110, surface: 'tarmac', barrier: 'right' },
-          { x: 620, y: 1680, w: 112, surface: 'tarmac', barrier: 'left' },
-          { x: 480, y: 1140, w: 116, surface: 'tarmac', barrier: 'left' },
-          { x: 960, y: 780, w: 124, surface: 'gravel', barrier: 'right' },
-          // High Alpine Loose Gravel Switchback Sector
-          { x: 1620, y: 980, w: 128, surface: 'gravel', barrier: 'left' },
-          { x: 1920, y: 520, w: 126, surface: 'gravel', barrier: 'right' },
-          { x: 2580, y: 440, w: 128, surface: 'gravel', barrier: 'left' },
-          { x: 2820, y: 960, w: 122, surface: 'gravel', barrier: 'right' },
-          { x: 2240, y: 1320, w: 124, surface: 'gravel', barrier: 'left' },
-          { x: 2420, y: 1840, w: 118, surface: 'tarmac', barrier: 'right' },
-          // Fast Technical Tarmac Descent with Hairpins
-          { x: 3220, y: 1620, w: 114, surface: 'tarmac', barrier: 'left' },
-          { x: 3880, y: 1320, w: 110, surface: 'tarmac', barrier: 'right' },
-          { x: 4120, y: 1880, w: 112, surface: 'tarmac', barrier: 'right' },
-          { x: 3440, y: 2240, w: 112, surface: 'tarmac', barrier: 'left' },
-          { x: 3980, y: 2740, w: 116, surface: 'gravel', barrier: 'right' },
-          { x: 3820, y: 3420, w: 122, surface: 'gravel', barrier: 'right' },
-          { x: 3080, y: 3220, w: 118, surface: 'tarmac', barrier: 'left' },
-          { x: 2540, y: 3780, w: 114, surface: 'tarmac', barrier: 'right' },
-          { x: 1760, y: 4060, w: 116, surface: 'tarmac', barrier: 'left' },
-          { x: 1180, y: 3720, w: 118, surface: 'tarmac', barrier: 'none' }
+          { x: 540, y: 2800, w: 92,  surface: 'tarmac', barrier: 'both' }, // Narrow cliff squeeze
+          { x: 1080, y: 2520, w: 124, surface: 'tarmac', barrier: 'left' },
+          { x: 1180, y: 1980, w: 86,  surface: 'tarmac', barrier: 'right' }, // Tight rock pass
+          { x: 620, y: 1680, w: 116, surface: 'tarmac', barrier: 'left' },
+          { x: 480, y: 1140, w: 136, surface: 'tarmac', barrier: 'left' },
+          { x: 960, y: 780, w: 158, surface: 'gravel', barrier: 'right' }, // Opens into wide alpine gravel bowl
+          { x: 1620, y: 980, w: 170, surface: 'gravel', barrier: 'left' },
+          { x: 1920, y: 520, w: 152, surface: 'gravel', barrier: 'right' },
+          { x: 2580, y: 440, w: 164, surface: 'gravel', barrier: 'left' },
+          { x: 2820, y: 960, w: 128, surface: 'gravel', barrier: 'right' },
+          { x: 2240, y: 1320, w: 114, surface: 'gravel', barrier: 'left' },
+          { x: 2420, y: 1840, w: 96,  surface: 'tarmac', barrier: 'both' }, // Narrow tarmac bridge entry
+          { x: 3220, y: 1620, w: 118, surface: 'tarmac', barrier: 'left' },
+          { x: 3880, y: 1320, w: 88,  surface: 'tarmac', barrier: 'right' }, // Narrow gorge hairpin
+          { x: 4120, y: 1880, w: 126, surface: 'tarmac', barrier: 'right' },
+          { x: 3440, y: 2240, w: 104, surface: 'tarmac', barrier: 'left' },
+          { x: 3980, y: 2740, w: 156, surface: 'gravel', barrier: 'right' }, // Wide spectator gravel zone
+          { x: 3820, y: 3420, w: 162, surface: 'gravel', barrier: 'right' },
+          { x: 3080, y: 3220, w: 110, surface: 'tarmac', barrier: 'left' },
+          { x: 2540, y: 3780, w: 94,  surface: 'tarmac', barrier: 'right' },
+          { x: 1760, y: 4060, w: 124, surface: 'tarmac', barrier: 'left' },
+          { x: 1180, y: 3720, w: 130, surface: 'tarmac', barrier: 'none' }
         ]
       },
       {
         code: 'SS2',
         name: "Val d'Orcia",
-        subtitle: 'Tuscan Endurance • Flowing Dirt & Narrow Bridges',
+        subtitle: 'Tuscan Endurance • Wide Crests & Narrow Stone Bridges',
         points: [
-          { x: 640, y: 3980, w: 132, surface: 'gravel', barrier: 'none' },
-          { x: 1240, y: 3680, w: 130, surface: 'gravel', barrier: 'right' },
-          { x: 920, y: 3040, w: 128, surface: 'gravel', barrier: 'left' },
-          { x: 460, y: 2480, w: 132, surface: 'gravel', barrier: 'left' },
-          { x: 860, y: 1880, w: 126, surface: 'gravel', barrier: 'right' },
-          { x: 480, y: 1180, w: 130, surface: 'gravel', barrier: 'left' },
-          { x: 980, y: 540, w: 128, surface: 'gravel', barrier: 'left' },
-          { x: 1780, y: 740, w: 122, surface: 'gravel', barrier: 'right' },
-          // Paved Village Bridge Crossing
-          { x: 2220, y: 1280, w: 102, surface: 'tarmac', barrier: 'both' },
-          { x: 2740, y: 1020, w: 104, surface: 'tarmac', barrier: 'both' },
-          // Back onto fast sweeping Tuscan gravel crests
-          { x: 3180, y: 480, w: 132, surface: 'gravel', barrier: 'left' },
-          { x: 3940, y: 680, w: 134, surface: 'gravel', barrier: 'right' },
-          { x: 3620, y: 1380, w: 128, surface: 'gravel', barrier: 'left' },
-          { x: 4140, y: 2040, w: 130, surface: 'gravel', barrier: 'right' },
-          { x: 3420, y: 2480, w: 124, surface: 'gravel', barrier: 'left' },
-          { x: 3980, y: 3160, w: 128, surface: 'gravel', barrier: 'right' },
-          { x: 3580, y: 3940, w: 126, surface: 'gravel', barrier: 'right' },
-          { x: 2780, y: 3580, w: 122, surface: 'tarmac', barrier: 'left' },
-          { x: 2280, y: 4080, w: 126, surface: 'gravel', barrier: 'right' },
-          { x: 1580, y: 4160, w: 130, surface: 'gravel', barrier: 'none' }
+          { x: 640, y: 3980, w: 148, surface: 'gravel', barrier: 'none' },
+          { x: 1240, y: 3680, w: 166, surface: 'gravel', barrier: 'right' }, // Wide farm track
+          { x: 920, y: 3040, w: 122, surface: 'gravel', barrier: 'left' },
+          { x: 460, y: 2480, w: 172, surface: 'gravel', barrier: 'left' },  // Huge sweeping dirt bowl
+          { x: 860, y: 1880, w: 112, surface: 'gravel', barrier: 'right' },
+          { x: 480, y: 1180, w: 154, surface: 'gravel', barrier: 'left' },
+          { x: 980, y: 540, w: 144, surface: 'gravel', barrier: 'left' },
+          { x: 1780, y: 740, w: 116, surface: 'gravel', barrier: 'right' },
+          // Ultra-narrow medieval stone bridge crossing
+          { x: 2220, y: 1280, w: 78,  surface: 'tarmac', barrier: 'both' },
+          { x: 2740, y: 1020, w: 80,  surface: 'tarmac', barrier: 'both' },
+          // Opens back out onto wide Tuscan gravel crests
+          { x: 3180, y: 480, w: 162, surface: 'gravel', barrier: 'left' },
+          { x: 3940, y: 680, w: 174, surface: 'gravel', barrier: 'right' },
+          { x: 3620, y: 1380, w: 118, surface: 'gravel', barrier: 'left' },
+          { x: 4140, y: 2040, w: 156, surface: 'gravel', barrier: 'right' },
+          { x: 3420, y: 2480, w: 96,  surface: 'gravel', barrier: 'both' }, // Cypress alley pinch
+          { x: 3980, y: 3160, w: 160, surface: 'gravel', barrier: 'right' },
+          { x: 3580, y: 3940, w: 148, surface: 'gravel', barrier: 'right' },
+          { x: 2780, y: 3580, w: 90,  surface: 'tarmac', barrier: 'both' },
+          { x: 2280, y: 4080, w: 142, surface: 'gravel', barrier: 'right' },
+          { x: 1580, y: 4160, w: 146, surface: 'gravel', barrier: 'none' }
         ]
       },
       {
         code: 'SS3',
         name: 'Monte Cassino',
-        subtitle: 'Mixed Technical Pass • Rapid Surface Changes',
+        subtitle: 'Mixed Technical Pass • Choke Points & Aprons',
         points: [
-          { x: 2200, y: 4150, w: 116, surface: 'tarmac', barrier: 'none' },
-          { x: 1380, y: 4020, w: 114, surface: 'tarmac', barrier: 'left' },
-          { x: 640, y: 3580, w: 116, surface: 'tarmac', barrier: 'left' },
-          { x: 1080, y: 3020, w: 118, surface: 'gravel', barrier: 'right' },
-          { x: 520, y: 2480, w: 122, surface: 'gravel', barrier: 'left' },
-          { x: 1180, y: 2060, w: 114, surface: 'tarmac', barrier: 'right' },
-          { x: 620, y: 1420, w: 112, surface: 'tarmac', barrier: 'left' },
-          { x: 880, y: 680, w: 120, surface: 'gravel', barrier: 'left' },
-          { x: 1680, y: 480, w: 124, surface: 'gravel', barrier: 'right' },
-          { x: 1960, y: 1180, w: 112, surface: 'tarmac', barrier: 'left' },
-          { x: 2560, y: 620, w: 110, surface: 'tarmac', barrier: 'both' },
-          { x: 3340, y: 540, w: 122, surface: 'gravel', barrier: 'right' },
-          { x: 3020, y: 1280, w: 124, surface: 'gravel', barrier: 'left' },
-          { x: 3880, y: 1120, w: 118, surface: 'tarmac', barrier: 'right' },
-          { x: 4120, y: 1840, w: 114, surface: 'tarmac', barrier: 'right' },
-          { x: 3360, y: 2180, w: 122, surface: 'gravel', barrier: 'left' },
-          { x: 4060, y: 2780, w: 124, surface: 'gravel', barrier: 'right' },
-          { x: 3320, y: 3260, w: 114, surface: 'tarmac', barrier: 'left' },
-          { x: 3860, y: 3920, w: 116, surface: 'tarmac', barrier: 'right' },
-          { x: 2980, y: 4080, w: 116, surface: 'tarmac', barrier: 'none' }
+          { x: 2200, y: 4150, w: 128, surface: 'tarmac', barrier: 'none' },
+          { x: 1380, y: 4020, w: 104, surface: 'tarmac', barrier: 'left' },
+          { x: 640, y: 3580, w: 86,  surface: 'tarmac', barrier: 'both' },
+          { x: 1080, y: 3020, w: 154, surface: 'gravel', barrier: 'right' },
+          { x: 520, y: 2480, w: 168, surface: 'gravel', barrier: 'left' },
+          { x: 1180, y: 2060, w: 94,  surface: 'tarmac', barrier: 'right' },
+          { x: 620, y: 1420, w: 88,  surface: 'tarmac', barrier: 'left' },
+          { x: 880, y: 680, w: 152, surface: 'gravel', barrier: 'left' },
+          { x: 1680, y: 480, w: 164, surface: 'gravel', barrier: 'right' },
+          { x: 1960, y: 1180, w: 92,  surface: 'tarmac', barrier: 'left' },
+          { x: 2560, y: 620, w: 80,  surface: 'tarmac', barrier: 'both' }, // Abbey gate narrow choke
+          { x: 3340, y: 540, w: 158, surface: 'gravel', barrier: 'right' },
+          { x: 3020, y: 1280, w: 148, surface: 'gravel', barrier: 'left' },
+          { x: 3880, y: 1120, w: 108, surface: 'tarmac', barrier: 'right' },
+          { x: 4120, y: 1840, w: 90,  surface: 'tarmac', barrier: 'right' },
+          { x: 3360, y: 2180, w: 160, surface: 'gravel', barrier: 'left' },
+          { x: 4060, y: 2780, w: 152, surface: 'gravel', barrier: 'right' },
+          { x: 3320, y: 3260, w: 98,  surface: 'tarmac', barrier: 'left' },
+          { x: 3860, y: 3920, w: 122, surface: 'tarmac', barrier: 'right' },
+          { x: 2980, y: 4080, w: 128, surface: 'tarmac', barrier: 'none' }
         ]
       },
       {
         code: 'SS4',
         name: 'Sanremo Passo',
-        subtitle: 'Coastal Cliffside • High-Speed Tarmac & Gorge',
+        subtitle: 'Coastal Cliffside • Razor-Thin Gorge & Wide Hairpins',
         points: [
-          { x: 3980, y: 3980, w: 114, surface: 'tarmac', barrier: 'none' },
-          { x: 3960, y: 3120, w: 112, surface: 'tarmac', barrier: 'right' },
-          { x: 3320, y: 2680, w: 108, surface: 'tarmac', barrier: 'left' },
-          { x: 4080, y: 2160, w: 110, surface: 'tarmac', barrier: 'right' },
-          { x: 4040, y: 1280, w: 112, surface: 'tarmac', barrier: 'right' },
-          { x: 3420, y: 620, w: 108, surface: 'tarmac', barrier: 'left' },
-          { x: 2560, y: 880, w: 118, surface: 'gravel', barrier: 'left' },
-          { x: 2180, y: 440, w: 122, surface: 'gravel', barrier: 'right' },
-          { x: 1360, y: 580, w: 120, surface: 'gravel', barrier: 'left' },
-          { x: 1680, y: 1280, w: 118, surface: 'gravel', barrier: 'right' },
-          { x: 920, y: 1120, w: 112, surface: 'tarmac', barrier: 'left' },
-          { x: 460, y: 1640, w: 108, surface: 'tarmac', barrier: 'left' },
-          { x: 1140, y: 2120, w: 108, surface: 'tarmac', barrier: 'right' },
-          { x: 520, y: 2680, w: 110, surface: 'tarmac', barrier: 'left' },
-          { x: 640, y: 3560, w: 118, surface: 'gravel', barrier: 'left' },
-          { x: 1420, y: 3980, w: 122, surface: 'gravel', barrier: 'right' },
-          { x: 1960, y: 3280, w: 114, surface: 'tarmac', barrier: 'left' },
-          { x: 2680, y: 3860, w: 112, surface: 'tarmac', barrier: 'right' },
-          { x: 3220, y: 3460, w: 114, surface: 'tarmac', barrier: 'none' }
+          { x: 3980, y: 3980, w: 126, surface: 'tarmac', barrier: 'none' },
+          { x: 3960, y: 3120, w: 98,  surface: 'tarmac', barrier: 'right' },
+          { x: 3320, y: 2680, w: 82,  surface: 'tarmac', barrier: 'both' }, // Tight cliffside ledge
+          { x: 4080, y: 2160, w: 134, surface: 'tarmac', barrier: 'right' },
+          { x: 4040, y: 1280, w: 92,  surface: 'tarmac', barrier: 'right' },
+          { x: 3420, y: 620, w: 86,  surface: 'tarmac', barrier: 'left' },
+          { x: 2560, y: 880, w: 158, surface: 'gravel', barrier: 'left' },
+          { x: 2180, y: 440, w: 170, surface: 'gravel', barrier: 'right' },
+          { x: 1360, y: 580, w: 152, surface: 'gravel', barrier: 'left' },
+          { x: 1680, y: 1280, w: 138, surface: 'gravel', barrier: 'right' },
+          { x: 920, y: 1120, w: 94,  surface: 'tarmac', barrier: 'left' },
+          { x: 460, y: 1640, w: 80,  surface: 'tarmac', barrier: 'both' }, // Old town narrow pass
+          { x: 1140, y: 2120, w: 118, surface: 'tarmac', barrier: 'right' },
+          { x: 520, y: 2680, w: 92,  surface: 'tarmac', barrier: 'left' },
+          { x: 640, y: 3560, w: 156, surface: 'gravel', barrier: 'left' },
+          { x: 1420, y: 3980, w: 164, surface: 'gravel', barrier: 'right' },
+          { x: 1960, y: 3280, w: 102, surface: 'tarmac', barrier: 'left' },
+          { x: 2680, y: 3860, w: 96,  surface: 'tarmac', barrier: 'right' },
+          { x: 3220, y: 3460, w: 124, surface: 'tarmac', barrier: 'none' }
         ]
       },
       {
         code: 'SS5',
         name: 'Acropolis Special',
-        subtitle: 'Parnassus Marathon • Brutal Dirt Hairpins',
+        subtitle: 'Parnassus Marathon • Boulder Canyons & Drift Bowls',
         points: [
-          { x: 520, y: 620, w: 126, surface: 'gravel', barrier: 'none' },
-          { x: 1340, y: 480, w: 124, surface: 'gravel', barrier: 'left' },
-          { x: 1860, y: 1040, w: 122, surface: 'gravel', barrier: 'right' },
-          { x: 2480, y: 480, w: 120, surface: 'gravel', barrier: 'left' },
-          { x: 3320, y: 560, w: 124, surface: 'gravel', barrier: 'right' },
-          { x: 4060, y: 920, w: 122, surface: 'gravel', barrier: 'right' },
-          { x: 3380, y: 1420, w: 118, surface: 'gravel', barrier: 'left' },
-          { x: 4080, y: 1980, w: 120, surface: 'gravel', barrier: 'right' },
-          { x: 3260, y: 2420, w: 112, surface: 'tarmac', barrier: 'left' },
-          { x: 2480, y: 1940, w: 110, surface: 'tarmac', barrier: 'right' },
-          { x: 1920, y: 2480, w: 120, surface: 'gravel', barrier: 'left' },
-          { x: 2680, y: 3020, w: 122, surface: 'gravel', barrier: 'right' },
-          { x: 3920, y: 3120, w: 124, surface: 'gravel', barrier: 'right' },
-          { x: 3780, y: 3960, w: 122, surface: 'gravel', barrier: 'right' },
-          { x: 2840, y: 3860, w: 118, surface: 'gravel', barrier: 'left' },
-          { x: 2180, y: 4140, w: 122, surface: 'gravel', barrier: 'right' },
+          { x: 520, y: 620, w: 146, surface: 'gravel', barrier: 'none' },
+          { x: 1340, y: 480, w: 168, surface: 'gravel', barrier: 'left' },
+          { x: 1860, y: 1040, w: 96,  surface: 'gravel', barrier: 'both' }, // Narrow canyon chute
+          { x: 2480, y: 480, w: 162, surface: 'gravel', barrier: 'left' },
+          { x: 3320, y: 560, w: 174, surface: 'gravel', barrier: 'right' },
+          { x: 4060, y: 920, w: 132, surface: 'gravel', barrier: 'right' },
+          { x: 3380, y: 1420, w: 94,  surface: 'gravel', barrier: 'left' },
+          { x: 4080, y: 1980, w: 160, surface: 'gravel', barrier: 'right' },
+          { x: 3260, y: 2420, w: 84,  surface: 'tarmac', barrier: 'both' }, // Paved mountain causeway
+          { x: 2480, y: 1940, w: 88,  surface: 'tarmac', barrier: 'right' },
+          { x: 1920, y: 2480, w: 166, surface: 'gravel', barrier: 'left' },
+          { x: 2680, y: 3020, w: 154, surface: 'gravel', barrier: 'right' },
+          { x: 3920, y: 3120, w: 172, surface: 'gravel', barrier: 'right' },
+          { x: 3780, y: 3960, w: 128, surface: 'gravel', barrier: 'right' },
+          { x: 2840, y: 3860, w: 92,  surface: 'gravel', barrier: 'left' },
+          { x: 2180, y: 4140, w: 164, surface: 'gravel', barrier: 'right' },
           { x: 1480, y: 3460, w: 118, surface: 'gravel', barrier: 'left' },
-          { x: 880, y: 4020, w: 120, surface: 'gravel', barrier: 'left' },
-          { x: 480, y: 3260, w: 114, surface: 'tarmac', barrier: 'left' },
-          { x: 1160, y: 2680, w: 114, surface: 'tarmac', barrier: 'right' },
-          { x: 520, y: 2040, w: 122, surface: 'gravel', barrier: 'left' },
-          { x: 1180, y: 1460, w: 124, surface: 'gravel', barrier: 'none' }
+          { x: 880, y: 4020, w: 158, surface: 'gravel', barrier: 'left' },
+          { x: 480, y: 3260, w: 86,  surface: 'tarmac', barrier: 'both' },
+          { x: 1160, y: 2680, w: 94,  surface: 'tarmac', barrier: 'right' },
+          { x: 520, y: 2040, w: 152, surface: 'gravel', barrier: 'left' },
+          { x: 1180, y: 1460, w: 140, surface: 'gravel', barrier: 'none' }
         ]
       }
     ];
@@ -601,21 +645,23 @@
 
         this.samples = [];
         this.barriers = [];
-        this.trees = [];
+        this.obstacles = []; // Trees (solid trunk), Bushes (brushable scrub), Rocks (solid boulder)
         this.sectorIndices = [0, 0, 0];
         this.startPose = { x: 0, y: 0, angle: 0 };
+        this.stageSeed = 1;
       }
 
       build(stageIndex) {
+        this.stageSeed = stageIndex + 1;
         const stage = STAGES[stageIndex];
         const pts = stage.points;
         const rawSamples = [];
         this.samples = [];
         this.barriers = [];
-        this.trees = [];
+        this.obstacles = [];
 
-        // High-density raw spline evaluation
-        const stepsPerSegment = 40;
+        // High-density raw spline evaluation including Catmull-Rom smooth track width interpolation
+        const stepsPerSegment = 44;
         for (let i = 0; i < pts.length - 1; i++) {
           const p0 = pts[Math.max(0, i - 1)];
           const p1 = pts[i];
@@ -626,7 +672,8 @@
             const t = s / stepsPerSegment;
             const x = catmullRom(p0.x, p1.x, p2.x, p3.x, t);
             const y = catmullRom(p0.y, p1.y, p2.y, p3.y, t);
-            const w = p1.w + (p2.w - p1.w) * t;
+            // Smoothly interpolate width along spline and clamp to safe bounds
+            const w = Math.max(72, Math.min(185, catmullRom(p0.w, p1.w, p2.w, p3.w, t)));
             const surface = t < 0.5 ? p1.surface : p2.surface;
             const barrier = t < 0.5 ? p1.barrier : p2.barrier;
             rawSamples.push({ x, y, w, surface, barrier });
@@ -635,8 +682,8 @@
         const last = pts[pts.length - 1];
         rawSamples.push({ x: last.x, y: last.y, w: last.w, surface: last.surface, barrier: last.barrier });
 
-        // Resample spline at uniform arc-length intervals (18px) so corners never bunch up
-        const spacing = 18;
+        // Resample spline at uniform arc-length intervals (16px)
+        const spacing = 16;
         this.samples.push({ ...rawSamples[0], dist: 0 });
         let accumDist = 0;
         let totalDist = 0;
@@ -663,45 +710,104 @@
           }
         }
 
-        // Compute smooth tangents, normals, curvature, and dirtBlend (0 = tarmac, 1 = gravel)
+        // Compute smooth tangents, normals, and left/right edge coordinates
         for (let i = 0; i < this.samples.length; i++) {
           const prev = this.samples[Math.max(0, i - 1)];
           const next = this.samples[Math.min(this.samples.length - 1, i + 1)];
           const dx = next.x - prev.x;
           const dy = next.y - prev.y;
           const len = Math.hypot(dx, dy) || 1;
-          this.samples[i].tx = dx / len;
-          this.samples[i].ty = dy / len;
-          this.samples[i].nx = -dy / len;
-          this.samples[i].ny = dx / len;
+          const s = this.samples[i];
+          s.tx = dx / len;
+          s.ty = dy / len;
+          s.nx = -dy / len;
+          s.ny = dx / len;
+          const halfW = s.w * 0.5;
+          s.lx = s.x + s.nx * halfW;
+          s.ly = s.y + s.ny * halfW;
+          s.rx = s.x - s.nx * halfW;
+          s.ry = s.y - s.ny * halfW;
         }
 
-        // Calculate signed curvature and smooth surface transition blend factor
+        // Untangle and relax inner corner rails so tight hairpins never fold over or pinch textures
+        for (let iter = 0; iter < 28; iter++) {
+          const nextLx = new Float64Array(this.samples.length);
+          const nextLy = new Float64Array(this.samples.length);
+          const nextRx = new Float64Array(this.samples.length);
+          const nextRy = new Float64Array(this.samples.length);
+
+          for (let i = 0; i < this.samples.length; i++) {
+            nextLx[i] = this.samples[i].lx;
+            nextLy[i] = this.samples[i].ly;
+            nextRx[i] = this.samples[i].rx;
+            nextRy[i] = this.samples[i].ry;
+          }
+
+          for (let i = 1; i < this.samples.length - 1; i++) {
+            const prev = this.samples[i - 1];
+            const curr = this.samples[i];
+            const next = this.samples[i + 1];
+
+            // Measure forward progress of both rails along the centerline tangent
+            const advL = (next.lx - prev.lx) * curr.tx + (next.ly - prev.ly) * curr.ty;
+            const advR = (next.rx - prev.rx) * curr.tx + (next.ry - prev.ry) * curr.ty;
+
+            // Strongly relax whichever rail is compressed on the inside of a tight corner
+            const alphaL = advL < 24 ? 0.46 : 0.08;
+            const alphaR = advR < 24 ? 0.46 : 0.08;
+
+            nextLx[i] = curr.lx * (1 - alphaL) + ((prev.lx + next.lx) * 0.5) * alphaL;
+            nextLy[i] = curr.ly * (1 - alphaL) + ((prev.ly + next.ly) * 0.5) * alphaL;
+            nextRx[i] = curr.rx * (1 - alphaR) + ((prev.rx + next.rx) * 0.5) * alphaR;
+            nextRy[i] = curr.ry * (1 - alphaR) + ((prev.ry + next.ry) * 0.5) * alphaR;
+          }
+
+          for (let i = 1; i < this.samples.length - 1; i++) {
+            this.samples[i].lx = nextLx[i];
+            this.samples[i].ly = nextLy[i];
+            this.samples[i].rx = nextRx[i];
+            this.samples[i].ry = nextRy[i];
+          }
+        }
+
+        // Store smoothed cross-track vectors for pinch-free lateral coordinate mapping
+        for (let i = 0; i < this.samples.length; i++) {
+          const s = this.samples[i];
+          s.mx = (s.lx + s.rx) * 0.5;
+          s.my = (s.ly + s.ry) * 0.5;
+          s.cx = s.lx - s.rx;
+          s.cy = s.ly - s.ry;
+          s.effW = Math.hypot(s.cx, s.cy) || s.w;
+          s.ux = s.cx / s.effW;
+          s.uy = s.cy / s.effW;
+        }
+
+        // Calculate signed curvature and smooth surface transition blend factor (`dirtBlend` over +/- 11 samples = ~350px)
+        const blendWindow = 11;
         for (let i = 0; i < this.samples.length; i++) {
           const prev = this.samples[Math.max(0, i - 2)];
           const next = this.samples[Math.min(this.samples.length - 1, i + 2)];
-          // Signed cross product of tangents indicates which side is the tight inside of a corner
           this.samples[i].signedCurv = prev.tx * next.ty - prev.ty * next.tx;
 
-          // Smooth surface blend over a +/- 7 sample window (approx 250px transition apron)
-          let gravelCount = 0;
-          let windowCount = 0;
-          for (let k = Math.max(0, i - 7); k <= Math.min(this.samples.length - 1, i + 7); k++) {
-            gravelCount += this.samples[k].surface === 'gravel' ? 1 : 0;
-            windowCount++;
+          let weightedGravel = 0;
+          let totalWeight = 0;
+          for (let k = Math.max(0, i - blendWindow); k <= Math.min(this.samples.length - 1, i + blendWindow); k++) {
+            const weight = 1 - Math.abs(k - i) / (blendWindow + 1);
+            weightedGravel += (this.samples[k].surface === 'gravel' ? 1 : 0) * weight;
+            totalWeight += weight;
           }
-          this.samples[i].dirtBlend = gravelCount / windowCount;
+          this.samples[i].dirtBlend = weightedGravel / totalWeight;
         }
 
         // Sector indices (S1 at 33%, S2 at 66%, Finish at 97%)
         this.sectorIndices = [
           Math.floor(this.samples.length * 0.33),
           Math.floor(this.samples.length * 0.66),
-          this.samples.length - 8
+          this.samples.length - 9
         ];
 
         // Start pose
-        const s0 = this.samples[5];
+        const s0 = this.samples[6];
         this.startPose = {
           x: s0.x,
           y: s0.y,
@@ -719,18 +825,16 @@
           return seed / 233280;
         };
 
-        // Helper to prevent barrier posts from EVER bunching up or overlapping track
+        // Helper to place roadside bollards cleanly along variable-width edges
         const tryAddBarrier = (bx, by, sampleIdx, side) => {
-          // 1. Check minimum spacing against existing barrier posts (44px min distance)
           for (let j = this.barriers.length - 1; j >= 0; j--) {
             const existing = this.barriers[j];
-            if (Math.hypot(bx - existing.x, by - existing.y) < 44) {
+            if (Math.hypot(bx - existing.x, by - existing.y) < 42) {
               return;
             }
           }
-          // 2. Ensure barrier never encroaches into the track ribbon on sharp hairpins
-          const winStart = Math.max(0, sampleIdx - 14);
-          const winEnd = Math.min(this.samples.length - 1, sampleIdx + 14);
+          const winStart = Math.max(0, sampleIdx - 16);
+          const winEnd = Math.min(this.samples.length - 1, sampleIdx + 16);
           for (let j = winStart; j <= winEnd; j++) {
             const s = this.samples[j];
             if (Math.hypot(bx - s.x, by - s.y) < s.w * 0.5 + 8) {
@@ -740,20 +844,17 @@
           this.barriers.push({
             x: bx,
             y: by,
-            r: 8.5,
+            r: 8.0,
             index: sampleIdx,
             side
           });
         };
 
-        // Place roadside bollards cleanly along outer edges with anti-bunching guard
         for (let i = 10; i < this.samples.length - 12; i += 3) {
           const s = this.samples[i];
-          const offset = s.w * 0.5 + 12;
-
-          // Skip placing posts on the pinched inside apex of tight hairpins
-          const leftIsPinchedInside = s.signedCurv > 0.16;
-          const rightIsPinchedInside = s.signedCurv < -0.16;
+          const offset = s.w * 0.5 + 11;
+          const leftIsPinchedInside = s.signedCurv > 0.14;
+          const rightIsPinchedInside = s.signedCurv < -0.14;
 
           if ((s.barrier === 'left' || s.barrier === 'both') && !leftIsPinchedInside) {
             tryAddBarrier(s.x + s.nx * offset, s.y + s.ny * offset, i, 1);
@@ -763,26 +864,90 @@
           }
         }
 
-        // Scatter matte pine trees safely outside the track ribbon
-        for (let i = 0; i < 520; i++) {
+        // Helper to verify an obstacle doesn't overlap the variable-width road ribbon
+        const isSafeFromTrack = (ox, oy, pad) => {
+          for (let j = 0; j < this.samples.length; j += 3) {
+            const check = this.samples[j];
+            if (Math.hypot(ox - check.x, oy - check.y) < check.w * 0.5 + pad) {
+              return false;
+            }
+          }
+          for (let j = 0; j < this.obstacles.length; j++) {
+            const existing = this.obstacles[j];
+            if (Math.hypot(ox - existing.x, oy - existing.y) < (existing.r + pad) * 0.68) {
+              return false;
+            }
+          }
+          return true;
+        };
+
+        // 1. Place Roadside Scrub Bushes & Hedgerows (closer to track edge — brushable obstacles!)
+        for (let i = 0; i < 290; i++) {
           const sampleIdx = Math.floor(rand() * this.samples.length);
           const s = this.samples[sampleIdx];
           const side = rand() > 0.5 ? 1 : -1;
-          const distFromCenter = s.w * 0.5 + 54 + rand() * 310;
+          const distFromCenter = s.w * 0.5 + 24 + rand() * 95;
+          const bx = s.x + s.nx * side * distFromCenter + (rand() - 0.5) * 28;
+          const by = s.y + s.ny * side * distFromCenter + (rand() - 0.5) * 28;
+          const radius = 12 + rand() * 11;
+
+          if (isSafeFromTrack(bx, by, radius + 9)) {
+            this.obstacles.push({
+              type: 'bush',
+              x: bx,
+              y: by,
+              r: radius,
+              collideR: radius * 0.78,
+              seed: Math.floor(rand() * 1000),
+              hasFlowers: rand() > 0.62,
+              rustleCooldown: 0
+            });
+          }
+        }
+
+        // 2. Place Faceted Alpine Boulders / Rock Outcrops
+        for (let i = 0; i < 95; i++) {
+          const sampleIdx = Math.floor(rand() * this.samples.length);
+          const s = this.samples[sampleIdx];
+          const side = rand() > 0.5 ? 1 : -1;
+          const distFromCenter = s.w * 0.5 + 34 + rand() * 170;
+          const rx = s.x + s.nx * side * distFromCenter + (rand() - 0.5) * 35;
+          const ry = s.y + s.ny * side * distFromCenter + (rand() - 0.5) * 35;
+          const radius = 14 + rand() * 15;
+
+          if (isSafeFromTrack(rx, ry, radius + 16)) {
+            this.obstacles.push({
+              type: 'rock',
+              x: rx,
+              y: ry,
+              r: radius,
+              collideR: radius * 0.82,
+              seed: Math.floor(rand() * 1000),
+              angle: rand() * Math.PI * 2
+            });
+          }
+        }
+
+        // 3. Place Multi-Tiered Conifer Pine Trees (with solid trunk collisions)
+        for (let i = 0; i < 460; i++) {
+          const sampleIdx = Math.floor(rand() * this.samples.length);
+          const s = this.samples[sampleIdx];
+          const side = rand() > 0.5 ? 1 : -1;
+          const distFromCenter = s.w * 0.5 + 48 + rand() * 340;
           const tx = s.x + s.nx * side * distFromCenter + (rand() - 0.5) * 45;
           const ty = s.y + s.ny * side * distFromCenter + (rand() - 0.5) * 45;
-          const radius = 16 + rand() * 20;
+          const radius = 20 + rand() * 22;
 
-          let tooClose = false;
-          for (let j = 0; j < this.samples.length; j += 4) {
-            const check = this.samples[j];
-            if (Math.hypot(tx - check.x, ty - check.y) < check.w * 0.5 + radius + 26) {
-              tooClose = true;
-              break;
-            }
-          }
-          if (!tooClose) {
-            this.trees.push({ x: tx, y: ty, r: radius });
+          if (isSafeFromTrack(tx, ty, radius + 18)) {
+            this.obstacles.push({
+              type: 'tree',
+              x: tx,
+              y: ty,
+              r: radius,
+              collideR: radius * 0.42, // Solid wooden trunk radius
+              seed: Math.floor(rand() * 1000),
+              angle: rand() * Math.PI * 2
+            });
           }
         }
       }
@@ -790,135 +955,250 @@
       bakeCanvas() {
         const ctx = this.ctx;
         const W = this.worldSize;
+        // Transparent background so the infinite procedural topographic map underneath shows through seamlessly!
         ctx.clearRect(0, 0, W, W);
 
-        // 1. Base Sandstone Paper Ground
-        ctx.fillStyle = PALETTE.paper;
-        ctx.fillRect(0, 0, W, W);
+        // Helper to map lateral fraction u (-0.5 = right edge, 0 = center, +0.5 = left edge) without corner pinching
+        const ptAt = (s, u, extraPx = 0) => ({
+          x: s.mx + s.cx * u + s.ux * extraPx,
+          y: s.my + s.cy * u + s.uy * extraPx
+        });
 
-        // Topographic contour lines for Swiss map feel
-        ctx.strokeStyle = PALETTE.paperDark;
-        ctx.lineWidth = 1.5;
-        for (let r = 220; r < W * 1.25; r += 160) {
-          ctx.beginPath();
-          ctx.arc(W * 0.22, W * 0.24, r, 0, Math.PI * 2);
-          ctx.stroke();
-          ctx.beginPath();
-          ctx.arc(W * 0.82, W * 0.76, r * 0.88, 0, Math.PI * 2);
-          ctx.stroke();
-        }
+        const fillRibbonQuad = (s1, s2, uMin, uMax, style, extraMin = 0, extraMax = 0) => {
+          const p1L = ptAt(s1, uMax, extraMax);
+          const p2L = ptAt(s2, uMax, extraMax);
+          const p2R = ptAt(s2, uMin, extraMin);
+          const p1R = ptAt(s1, uMin, extraMin);
+          const padX = s1.tx * 0.85;
+          const padY = s1.ty * 0.85;
 
-        // 2. Outer Track Border (Ink Halo)
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
+          ctx.fillStyle = style;
+          ctx.beginPath();
+          ctx.moveTo(p1L.x - padX, p1L.y - padY);
+          ctx.lineTo(p2L.x + padX, p2L.y + padY);
+          ctx.lineTo(p2R.x + padX, p2R.y + padY);
+          ctx.lineTo(p1R.x - padX, p1R.y - padY);
+          ctx.closePath();
+          ctx.fill();
+        };
+
+        // 1. Subtle Earth Embankment / Shoulder Verge Grading along Variable-Width Track
         for (let i = 0; i < this.samples.length - 1; i++) {
           const s1 = this.samples[i];
           const s2 = this.samples[i + 1];
-          ctx.strokeStyle = PALETTE.asphaltEdge;
-          ctx.lineWidth = s1.w + 10;
-          ctx.beginPath();
-          ctx.moveTo(s1.x, s1.y);
-          ctx.lineTo(s2.x, s2.y);
-          ctx.stroke();
+          fillRibbonQuad(s1, s2, -0.5, 0.5, 'rgba(206, 191, 169, 0.55)', -18, 18);
         }
 
-        // 3. Base Track Surface Fill (Tarmac & Gravel)
+        // 2. Outer Track Border (Ink Halo Quad Strip — No round caps or corner pinches!)
         for (let i = 0; i < this.samples.length - 1; i++) {
           const s1 = this.samples[i];
           const s2 = this.samples[i + 1];
-          ctx.strokeStyle = s1.surface === 'gravel' ? PALETTE.gravel : PALETTE.asphalt;
-          ctx.lineWidth = s1.w;
-          ctx.beginPath();
-          ctx.moveTo(s1.x, s1.y);
-          ctx.lineTo(s2.x, s2.y);
-          ctx.stroke();
+          fillRibbonQuad(s1, s2, -0.5, 0.5, PALETTE.asphaltEdge, -5, 5);
         }
 
-        // 4. Seamless Asphalt-to-Dirt Transition Aprons, Gravel Stippling & Centerlines
+        // 3. Base Track Ribbon Quads with Smooth Color Blending & Zero Circular Endcaps
+        for (let i = 0; i < this.samples.length - 1; i++) {
+          const s1 = this.samples[i];
+          const s2 = this.samples[i + 1];
+          const blend = (s1.dirtBlend + s2.dirtBlend) * 0.5;
+          fillRibbonQuad(s1, s2, -0.5, 0.5, lerpColorRGB(PALETTE.asphaltRGB, PALETTE.gravelRGB, blend));
+        }
+
+        // 3B. Continuous Longitudinal Wheel Grooves, Gravel Berms & Asphalt Racing Line Polish
+        for (let i = 0; i < this.samples.length - 1; i++) {
+          const s1 = this.samples[i];
+          const s2 = this.samples[i + 1];
+          const blend = (s1.dirtBlend + s2.dirtBlend) * 0.5;
+
+          if (blend > 0.08) {
+            // Swept darker earth wheel ruts at u = ±0.21
+            const rutAlpha = Math.min(0.55, blend * 0.52);
+            fillRibbonQuad(s1, s2, -0.31, -0.11, `rgba(142, 121, 96, ${rutAlpha})`);
+            fillRibbonQuad(s1, s2, 0.11, 0.31, `rgba(142, 121, 96, ${rutAlpha})`);
+
+            // Lighter loose gravel center crown & outer cushion berms
+            const bermAlpha = Math.min(0.48, blend * 0.44);
+            fillRibbonQuad(s1, s2, -0.06, 0.06, `rgba(210, 194, 173, ${bermAlpha})`);
+            fillRibbonQuad(s1, s2, -0.47, -0.35, `rgba(205, 188, 166, ${bermAlpha})`);
+            fillRibbonQuad(s1, s2, 0.35, 0.47, `rgba(205, 188, 166, ${bermAlpha})`);
+          }
+
+          if (blend < 0.92) {
+            // Subtle rubbered-in dark racing grooves & lighter coarse macadam crown on asphalt
+            const tarmacAlpha = (1 - blend);
+            fillRibbonQuad(s1, s2, -0.29, -0.11, `rgba(28, 28, 27, ${tarmacAlpha * 0.42})`);
+            fillRibbonQuad(s1, s2, 0.11, 0.29, `rgba(28, 28, 27, ${tarmacAlpha * 0.42})`);
+            fillRibbonQuad(s1, s2, -0.05, 0.05, `rgba(58, 58, 55, ${tarmacAlpha * 0.28})`);
+
+            // Subtle weathered painted shoulder lines on wider tarmac sections
+            if (s1.w >= 96 && blend < 0.25) {
+              fillRibbonQuad(s1, s2, -0.445, -0.42, 'rgba(244, 241, 234, 0.38)');
+              fillRibbonQuad(s1, s2, 0.42, 0.445, 'rgba(244, 241, 234, 0.38)');
+            }
+          }
+        }
+
+        // 4. Feathered Longitudinal Tire Groove Fingers & Area-Weighted Surface Textures (Zero Corner Pinching!)
         for (let i = 2; i < this.samples.length - 2; i++) {
           const s = this.samples[i];
+          const next = this.samples[i + 1];
           const prev = this.samples[i - 1];
-          const isTransitionEdge = s.surface !== prev.surface;
+          const isTransitionCenter = s.surface !== prev.surface;
 
-          // If we are inside the transition zone (dirtBlend between 0.05 and 0.95), feather gravel & tire dust across the joint
-          if (s.dirtBlend > 0.04 && s.dirtBlend < 0.96) {
-            const count = Math.floor(14 * (1 - Math.abs(s.dirtBlend - 0.5) * 1.6));
-            for (let p = 0; p < count; p++) {
-              const hash1 = ((i * 53 + p * 97) % 100) / 100;
-              const hash2 = ((i * 29 + p * 61) % 100) / 100;
-              const lateral = (hash1 - 0.5) * (s.w - 10);
-              const longOffset = (hash2 - 0.5) * 20;
-              const gx = s.x + s.nx * lateral + s.tx * longOffset;
-              const gy = s.y + s.ny * lateral + s.ty * longOffset;
-              // Draw gravel scatter bleeding onto tarmac and dark tarmac ruts bleeding onto gravel
-              ctx.fillStyle = s.surface === 'tarmac' ? PALETTE.gravel : PALETTE.asphalt;
-              ctx.fillRect(gx, gy, 4 + (p % 3), 4 + (p % 2));
+          // Inside transition zone: draw jagged longitudinal fingers of asphalt/gravel & wheel-rut dust streaks
+          if (s.dirtBlend > 0.02 && s.dirtBlend < 0.98) {
+            const blend = s.dirtBlend;
+            const lanes = [-0.38, -0.21, 0.0, 0.21, 0.38];
+            for (let l = 0; l < lanes.length; l++) {
+              const laneU = lanes[l];
+              const stripHalfU = 0.045 + ((i * 17 + l * 31) % 10) * 0.004;
+              const fingerBias = ((l * 37 + i * 13) % 100) / 100;
+
+              if (blend > 0.12 && blend < 0.88) {
+                const isWheelTrack = Math.abs(laneU) > 0.15 && Math.abs(laneU) < 0.30;
+                const style = isWheelTrack
+                  ? `rgba(43, 43, 42, ${(1 - blend) * 0.75})`
+                  : `rgba(184, 165, 142, ${blend * 0.75})`;
+                fillRibbonQuad(s, next, laneU - stripHalfU, laneU + stripHalfU, style);
+              }
+
+              if (fingerBias > 0.35) {
+                const u = (((i * 53 + l * 97) % 100) / 100 - 0.5) * 0.88;
+                const p1 = ptAt(s, u);
+                const p2 = ptAt(next, u);
+                const localStep = Math.hypot(p2.x - p1.x, p2.y - p1.y);
+                if (((i * 19 + l * 41) % 100) / 100 <= localStep / 16.0) {
+                  ctx.fillStyle = blend < 0.5 ? PALETTE.gravel : PALETTE.asphalt;
+                  ctx.fillRect(p1.x - 2, p1.y - 2, 4 + (l % 3), 3 + (i % 2));
+                }
+              }
+            }
+          }
+
+          // Paint crisp roadside transition curb blocks on the outer edges
+          if (isTransitionCenter) {
+            for (const side of [-1, 1]) {
+              const edgePt = ptAt(s, side * 0.48);
+              ctx.save();
+              ctx.translate(edgePt.x, edgePt.y);
+              ctx.rotate(Math.atan2(s.ty, s.tx));
+              ctx.fillStyle = PALETTE.terracotta;
+              ctx.strokeStyle = PALETTE.ink;
+              ctx.lineWidth = 1.5;
+              ctx.fillRect(-14, -3.5, 28, 7);
+              ctx.strokeRect(-14, -3.5, 28, 7);
+              ctx.restore();
+            }
+          }
+
+          // Area-weighted Dirt & Gravel Texture (prevents pebble clumping/pinching on tight inside corners)
+          if (s.dirtBlend > 0.25) {
+            const baseCount = Math.ceil(8 * s.dirtBlend * (s.effW / 115));
+            for (let p = 0; p < baseCount; p++) {
+              const u = (((i * 37 + p * 73) % 100) / 100 - 0.5) * 0.90;
+              const v = ((i * 61 + p * 29) % 100) / 100;
+              const p1 = ptAt(s, u);
+              const p2 = ptAt(next, u);
+              const localStep = Math.hypot(p2.x - p1.x, p2.y - p1.y);
+
+              // Area-density guard: skip pebbles proportionally when the inside of a corner is compressed
+              const keepProb = Math.min(1.0, localStep / 15.5);
+              const roll = ((i * 43 + p * 89) % 100) / 100;
+              if (roll > keepProb) continue;
+
+              const gx = p1.x + (p2.x - p1.x) * v;
+              const gy = p1.y + (p2.y - p1.y) * v;
+              const tonePick = (i + p) % 3;
+
+              if (tonePick === 0) {
+                ctx.fillStyle = '#89745E'; // Deep gravel stone
+              } else if (tonePick === 1) {
+                ctx.fillStyle = PALETTE.gravelDark;
+              } else {
+                ctx.fillStyle = '#D5C6B2'; // Sunlit limestone chip
+              }
+
+              const chipW = 2.4 + (p % 3) * 1.1;
+              const chipH = 1.8 + ((i + p) % 2) * 1.0;
+              ctx.save();
+              ctx.translate(gx, gy);
+              ctx.rotate(Math.atan2(p2.y - p1.y, p2.x - p1.x) + ((p % 3) - 1) * 0.25);
+              ctx.fillRect(-chipW * 0.5, -chipH * 0.5, chipW, chipH);
+              ctx.restore();
             }
 
-            // Draw longitudinal tire dust streaks dragging across the transition boundary
-            if (i % 2 === 0) {
-              for (const trackSide of [-0.24, 0.24]) {
-                const rx = s.x + s.nx * (s.w * trackSide);
-                const ry = s.y + s.ny * (s.w * trackSide);
-                ctx.strokeStyle = s.surface === 'tarmac' ? 'rgba(184, 165, 142, 0.55)' : 'rgba(43, 43, 42, 0.42)';
-                ctx.lineWidth = 5;
+            // Subtle washboard chatter ribs across wheel ruts on curved gravel sections
+            if (Math.abs(s.signedCurv) > 0.03 && i % 2 === 0) {
+              for (const rutU of [-0.21, 0.21]) {
+                const rL = ptAt(s, rutU - 0.07);
+                const rR = ptAt(s, rutU + 0.07);
+                ctx.strokeStyle = 'rgba(122, 102, 80, 0.34)';
+                ctx.lineWidth = 2.0;
                 ctx.beginPath();
-                ctx.moveTo(rx - s.tx * 12, ry - s.ty * 12);
-                ctx.lineTo(rx + s.tx * 12, ry + s.ty * 12);
+                ctx.moveTo(rL.x, rL.y);
+                ctx.lineTo(rR.x, rR.y);
                 ctx.stroke();
               }
             }
           }
 
-          // Paint crisp Swiss surface-change rumble strip & terracotta warning markers right at the boundary
-          if (isTransitionEdge) {
-            const half = s.w * 0.5;
-            ctx.save();
-            ctx.strokeStyle = PALETTE.terracotta;
-            ctx.lineWidth = 4;
-            ctx.setLineDash([7, 7]);
-            ctx.beginPath();
-            ctx.moveTo(s.x + s.nx * half, s.y + s.ny * half);
-            ctx.lineTo(s.x - s.nx * half, s.y - s.ny * half);
-            ctx.stroke();
-            ctx.restore();
+          // Area-weighted Asphalt Mineral Grain & Weathered Tar Seams
+          if (s.dirtBlend < 0.75) {
+            const tarmacWeight = 1 - s.dirtBlend;
+            const speckCount = Math.ceil(5 * tarmacWeight * (s.effW / 120));
+            for (let p = 0; p < speckCount; p++) {
+              const u = (((i * 41 + p * 67) % 100) / 100 - 0.5) * 0.88;
+              const v = ((i * 23 + p * 53) % 100) / 100;
+              const p1 = ptAt(s, u);
+              const p2 = ptAt(next, u);
+              const localStep = Math.hypot(p2.x - p1.x, p2.y - p1.y);
+              if (((i * 31 + p * 79) % 100) / 100 > localStep / 15.5) continue;
+
+              const ax = p1.x + (p2.x - p1.x) * v;
+              const ay = p1.y + (p2.y - p1.y) * v;
+              ctx.fillStyle = (p % 2 === 0) ? 'rgba(68, 68, 64, 0.55)' : 'rgba(24, 24, 22, 0.55)';
+              ctx.fillRect(ax - 1.2, ay - 1.2, 2.4, 2.4);
+            }
+
+            // Occasional weathered alpine tar-seal seam along the asphalt
+            if (i % 9 === 0 && s.dirtBlend < 0.2) {
+              const seamU = (((i * 17) % 60) / 100) - 0.3;
+              const p1 = ptAt(s, seamU);
+              const p2 = ptAt(next, seamU + 0.03);
+              ctx.strokeStyle = 'rgba(22, 22, 20, 0.48)';
+              ctx.lineWidth = 1.6;
+              ctx.beginPath();
+              ctx.moveTo(p1.x, p1.y);
+              ctx.lineTo(p2.x, p2.y);
+              ctx.stroke();
+            }
           }
 
-          if (s.surface === 'gravel') {
-            // Loose dirt ruts and multi-tone pebble stippling
-            ctx.fillStyle = PALETTE.gravelDark;
-            for (let p = 0; p < 6; p++) {
-              const lateral = (((i * 37 + p * 73) % 100) / 100 - 0.5) * (s.w - 14);
-              const gx = s.x + s.nx * lateral;
-              const gy = s.y + s.ny * lateral;
-              ctx.fillRect(gx, gy, 3.5, 3.5);
-            }
-            ctx.fillStyle = PALETTE.gravelLight;
-            for (let p = 0; p < 3; p++) {
-              const lateral = (((i * 19 + p * 43) % 100) / 100 - 0.5) * (s.w - 20);
-              const gx = s.x + s.nx * lateral;
-              const gy = s.y + s.ny * lateral;
-              ctx.fillRect(gx, gy, 2.5, 2.5);
-            }
-          } else if (i % 4 === 0 && s.dirtBlend < 0.25) {
-            // Crisp painted centerline on pure tarmac
-            const next = this.samples[i + 1];
+          // Crisp painted centerline dashes following the smoothed midpoint
+          if (i % 4 === 0 && s.dirtBlend < 0.32) {
             ctx.strokeStyle = PALETTE.cream;
-            ctx.lineWidth = 2.5;
+            ctx.lineWidth = 2.4;
             ctx.beginPath();
-            ctx.moveTo(s.x, s.y);
-            ctx.lineTo(next.x, next.y);
+            ctx.moveTo(s.mx, s.my);
+            ctx.lineTo(next.mx, next.my);
             ctx.stroke();
+          }
+
+          // Highlight narrow squeeze sections (w < 96) with classic Swiss red/cream apex curbing
+          if (s.w < 96 && i % 2 === 0) {
+            const curbColor = (Math.floor(i / 2) % 2 === 0) ? PALETTE.terracotta : PALETTE.cream;
+            fillRibbonQuad(s, next, -0.5, -0.45, curbColor);
+            fillRibbonQuad(s, next, 0.45, 0.5, curbColor);
           }
         }
 
         // 5. Sector & Start/Finish Gate Lines
-        this.drawGateLine(5, PALETTE.cream, 'START');
+        this.drawGateLine(6, PALETTE.cream, 'START');
         this.drawGateLine(this.sectorIndices[0], PALETTE.terracotta, 'S1');
         this.drawGateLine(this.sectorIndices[1], PALETTE.terracotta, 'S2');
         this.drawGateLine(this.sectorIndices[2], PALETTE.cream, 'FINISH', true);
 
-        // 6. Terracotta & Cream Roadside Bollards (Evenly spaced, never bunched)
+        // 6. Terracotta & Cream Roadside Bollards
         for (let i = 0; i < this.barriers.length; i++) {
           const b = this.barriers[i];
           ctx.fillStyle = PALETTE.ink;
@@ -935,27 +1215,164 @@
           ctx.stroke();
         }
 
-        // 7. Matte Forest Pine Canopies with Hard Drop Shadows
-        for (const tree of this.trees) {
-          ctx.fillStyle = PALETTE.pineShadow;
-          ctx.beginPath();
-          ctx.arc(tree.x + 6, tree.y + 6, tree.r, 0, Math.PI * 2);
-          ctx.fill();
+        // 7. Render Detailed Bushes, Boulders & Multi-Layered Pine Trees
+        for (const obs of this.obstacles) {
+          if (obs.type === 'bush') {
+            this.drawBush(ctx, obs);
+          } else if (obs.type === 'rock') {
+            this.drawRock(ctx, obs);
+          }
+        }
+        for (const obs of this.obstacles) {
+          if (obs.type === 'tree') {
+            this.drawPineTree(ctx, obs);
+          }
+        }
+      }
 
-          ctx.fillStyle = PALETTE.pine;
-          ctx.strokeStyle = PALETTE.ink;
-          ctx.lineWidth = 2;
-          ctx.beginPath();
-          ctx.arc(tree.x, tree.y, tree.r, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.stroke();
+      drawBush(ctx, bush) {
+        const { x, y, r, seed, hasFlowers } = bush;
+        const lobes = 5;
+        // Drop shadow
+        ctx.fillStyle = PALETTE.pineShadow;
+        ctx.beginPath();
+        for (let i = 0; i < lobes; i++) {
+          const ang = (i / lobes) * Math.PI * 2 + seed * 0.1;
+          const dist = r * 0.42;
+          const lr = r * (0.58 + ((seed + i * 19) % 10) * 0.02);
+          ctx.moveTo(x + 3.5 + Math.cos(ang) * dist + lr, y + 3.5 + Math.sin(ang) * dist);
+          ctx.arc(x + 3.5 + Math.cos(ang) * dist, y + 3.5 + Math.sin(ang) * dist, lr, 0, Math.PI * 2);
+        }
+        ctx.fill();
 
-          ctx.strokeStyle = PALETTE.pineShadow;
-          ctx.lineWidth = 1.5;
+        // Outer foliage lobes
+        ctx.fillStyle = PALETTE.bush;
+        ctx.strokeStyle = PALETTE.ink;
+        ctx.lineWidth = 1.6;
+        for (let i = 0; i < lobes; i++) {
+          const ang = (i / lobes) * Math.PI * 2 + seed * 0.1;
+          const dist = r * 0.40;
+          const lr = r * (0.56 + ((seed + i * 19) % 10) * 0.02);
           ctx.beginPath();
-          ctx.arc(tree.x - 2, tree.y - 2, tree.r * 0.55, 0, Math.PI * 1.4);
+          ctx.arc(x + Math.cos(ang) * dist, y + Math.sin(ang) * dist, lr, 0, Math.PI * 2);
+          ctx.fill();
           ctx.stroke();
         }
+
+        // Inner highlight cluster
+        ctx.fillStyle = PALETTE.pineLight;
+        ctx.beginPath();
+        ctx.arc(x - r * 0.12, y - r * 0.12, r * 0.48, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Optional terracotta/gold gorse blossoms
+        if (hasFlowers) {
+          ctx.fillStyle = seed % 2 === 0 ? PALETTE.gold : PALETTE.terracotta;
+          for (let f = 0; f < 3; f++) {
+            const fang = seed + f * 2.1;
+            const fx = x + Math.cos(fang) * (r * 0.35);
+            const fy = y + Math.sin(fang) * (r * 0.35);
+            ctx.fillRect(fx - 1.5, fy - 1.5, 3, 3);
+          }
+        }
+      }
+
+      drawRock(ctx, rock) {
+        const { x, y, r, seed, angle } = rock;
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(angle);
+
+        const sides = 7;
+        const pts = [];
+        for (let i = 0; i < sides; i++) {
+          const a = (i / sides) * Math.PI * 2;
+          const rad = r * (0.72 + ((seed + i * 31) % 10) * 0.035);
+          pts.push({ x: Math.cos(a) * rad, y: Math.sin(a) * rad });
+        }
+
+        // Hard shadow
+        ctx.fillStyle = PALETTE.ink;
+        ctx.beginPath();
+        ctx.moveTo(pts[0].x + 4, pts[0].y + 4);
+        for (let i = 1; i < sides; i++) ctx.lineTo(pts[i].x + 4, pts[i].y + 4);
+        ctx.closePath();
+        ctx.fill();
+
+        // Main rock polygon
+        ctx.fillStyle = PALETTE.rock;
+        ctx.strokeStyle = PALETTE.ink;
+        ctx.lineWidth = 1.8;
+        ctx.beginPath();
+        ctx.moveTo(pts[0].x, pts[0].y);
+        for (let i = 1; i < sides; i++) ctx.lineTo(pts[i].x, pts[i].y);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // Dark facet shading on lower-right half
+        ctx.fillStyle = PALETTE.rockDark;
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(pts[1].x, pts[1].y);
+        ctx.lineTo(pts[2].x, pts[2].y);
+        ctx.lineTo(pts[3].x, pts[3].y);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.restore();
+      }
+
+      drawPineTree(ctx, tree) {
+        const { x, y, r, seed, angle } = tree;
+        ctx.save();
+        ctx.translate(x, y);
+
+        // 1. Offset canopy ground shadow
+        ctx.fillStyle = PALETTE.pineShadow;
+        ctx.beginPath();
+        ctx.arc(6.5, 6.5, r * 0.92, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 2. Three-tier notched conifer starburst layers (outer dark pine -> mid pine -> crown highlight)
+        const tiers = [
+          { scale: 1.0, color: PALETTE.pineShadow, points: 12, rot: angle },
+          { scale: 0.84, color: PALETTE.pine, points: 10, rot: angle + 0.3 },
+          { scale: 0.54, color: PALETTE.pineLight, points: 8, rot: angle + 0.65 }
+        ];
+
+        for (let t = 0; t < tiers.length; t++) {
+          const tier = tiers[t];
+          const outerR = r * tier.scale;
+          const innerR = outerR * 0.72;
+          const totalVerts = tier.points * 2;
+
+          ctx.fillStyle = tier.color;
+          ctx.strokeStyle = PALETTE.ink;
+          ctx.lineWidth = t === 0 ? 1.8 : 1.3;
+          ctx.beginPath();
+          for (let i = 0; i < totalVerts; i++) {
+            const a = tier.rot + (i / totalVerts) * Math.PI * 2;
+            const jitter = 0.94 + ((seed + i * 17 + t * 23) % 10) * 0.012;
+            const rad = (i % 2 === 0 ? outerR : innerR) * jitter;
+            const vx = Math.cos(a) * rad;
+            const vy = Math.sin(a) * rad;
+            if (i === 0) ctx.moveTo(vx, vy);
+            else ctx.lineTo(vx, vy);
+          }
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+        }
+
+        // Center trunk pip
+        ctx.fillStyle = PALETTE.ink;
+        ctx.beginPath();
+        ctx.arc(0, 0, 2.2, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.restore();
       }
 
       drawGateLine(sampleIdx, color, label, checkered = false) {
@@ -985,10 +1402,20 @@
           ctx.lineTo(x2, y2);
           ctx.stroke();
         }
+
+        // Gate Pylons on road edges
+        for (const pt of [{ x: x1, y: y1 }, { x: x2, y: y2 }]) {
+          ctx.fillStyle = PALETTE.terracotta;
+          ctx.strokeStyle = PALETTE.ink;
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(pt.x, pt.y, 6, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+        }
         ctx.restore();
       }
 
-      // Stamp persistent tire marks or gravel ruts directly onto the offscreen canvas
       stampTireMark(x1, y1, x2, y2, surface, alpha) {
         const ctx = this.ctx;
         ctx.save();
@@ -1023,6 +1450,7 @@
         this.braking = false;
         this.reversing = false;
         this.brakeHoldTimer = 0;
+        this.impactCooldown = 0;
         this.driftAngle = 0;
         this.surface = 'tarmac';
         this.dirtBlend = 0;
@@ -1030,7 +1458,8 @@
         this.speed = 0;
         this.gear = 1;
         this.rpm = 0.2;
-        this.closestSampleIdx = 5;
+        this.closestSampleIdx = 6;
+        this.maxProgressIdx = 6; // Tracks sequential forward progress along the stage
         this.prevRearLeft = null;
         this.prevRearRight = null;
         this.prevFrontLeft = null;
@@ -1038,11 +1467,15 @@
       }
 
       update(dt, input, world, particles, audio) {
-        // 1. Determine current track surface, transition blend & nearest spline index
+        if (this.impactCooldown > 0) {
+          this.impactCooldown = Math.max(0, this.impactCooldown - dt);
+        }
+
+        // 1. Local Window Spline Search first so we don't accidentally snap to a crossing/nearby future sector
         let bestDist = Infinity;
         let bestIdx = this.closestSampleIdx;
-        const searchStart = Math.max(0, this.closestSampleIdx - 35);
-        const searchEnd = Math.min(world.samples.length - 1, this.closestSampleIdx + 55);
+        const searchStart = Math.max(0, this.closestSampleIdx - 38);
+        const searchEnd = Math.min(world.samples.length - 1, this.closestSampleIdx + 48);
 
         for (let i = searchStart; i <= searchEnd; i++) {
           const s = world.samples[i];
@@ -1052,30 +1485,37 @@
             bestIdx = i;
           }
         }
-        if (bestDist > 280) {
+
+        // Only advance sequential progress if the car is reasonably close to the next section of course
+        if (bestDist < 340 && bestIdx > this.maxProgressIdx && bestIdx <= this.maxProgressIdx + 55) {
+          this.maxProgressIdx = bestIdx;
+        }
+        this.closestSampleIdx = bestIdx;
+
+        // Also check physical surface under the car (even if driving near another part of the road)
+        let surfaceSample = world.samples[bestIdx];
+        let surfaceDist = bestDist;
+        if (surfaceDist > surfaceSample.w * 0.65) {
           for (let i = 0; i < world.samples.length; i += 2) {
             const s = world.samples[i];
             const d = Math.hypot(this.x - s.x, this.y - s.y);
-            if (d < bestDist) {
-              bestDist = d;
-              bestIdx = i;
+            if (d < surfaceDist) {
+              surfaceDist = d;
+              surfaceSample = s;
             }
           }
         }
 
         const prevSurface = this.surface;
-        this.closestSampleIdx = bestIdx;
-        const currentSample = world.samples[bestIdx];
-        const onRibbon = bestDist <= currentSample.w * 0.56;
-        this.surface = onRibbon ? currentSample.surface : 'offtrack';
-        this.dirtBlend = onRibbon ? currentSample.dirtBlend : 1.0;
+        const onRibbon = surfaceDist <= surfaceSample.w * 0.54;
+        this.surface = onRibbon ? surfaceSample.surface : 'offtrack';
+        this.dirtBlend = onRibbon ? surfaceSample.dirtBlend : 1.0;
 
-        // Subtle tactile camera nudge when crossing between asphalt and loose dirt
         if (prevSurface !== this.surface && this.speed > 130 && onRibbon) {
-          game.triggerCameraImpulse((Math.random() - 0.5) * 3.2, (Math.random() - 0.5) * 3.2);
+          game.triggerCameraImpulse((Math.random() - 0.5) * 3.0, (Math.random() - 0.5) * 3.0);
         }
 
-        // 2. Responsive steering input & yaw rotation BEFORE velocity projection
+        // 2. Steering & Yaw Rotation
         const targetSteer = (input.right ? 1 : 0) - (input.left ? 1 : 0);
         const steerRate = targetSteer !== 0 ? 12.0 : 15.0;
         this.steer += (targetSteer - this.steer) * Math.min(1, steerRate * dt);
@@ -1084,7 +1524,6 @@
         this.speed = Math.hypot(this.vx, this.vy);
         const blend = this.dirtBlend;
 
-        // Angular rotation (strictly driven by steering and surface, untouched by braking)
         const speedFactor = Math.min(1, this.speed / 55);
         const yawAuthority = 3.35 * (1 - blend) + 3.95 * blend;
         const highSpeedStability = 1 - Math.min(0.22, this.speed / 1250);
@@ -1095,13 +1534,13 @@
         this.angularVel += (targetAngVel - this.angularVel) * Math.min(1, yawResponse * dt);
         this.angle += this.angularVel * dt;
 
-        // 3. Project world velocity into the rotated chassis frame (true centripetal slip!)
+        // 3. Project world velocity into chassis frame
         const cosA = Math.cos(this.angle);
         const sinA = Math.sin(this.angle);
         let forwardVel = this.vx * cosA + this.vy * sinA;
         let lateralVel = -this.vx * sinA + this.vy * cosA;
 
-        // 4. Lively Group 4 Auto-Throttle + Pure Mechanical Braking -> Full Stop -> Reverse
+        // 4. Auto-Throttle + Pure Braking -> Reverse
         const maxSpeed = this.surface === 'offtrack'
           ? 265
           : 495 * (1 - blend) + 445 * blend;
@@ -1112,12 +1551,10 @@
         if (this.braking) {
           const brakeDecel = this.surface === 'offtrack' ? 420 : (540 * (1 - blend) + 450 * blend);
           if (forwardVel > 6) {
-            // Braking down to a full stop
             forwardVel = Math.max(0, forwardVel - brakeDecel * dt);
             this.reversing = false;
             this.brakeHoldTimer = 0;
           } else {
-            // Stopped while still holding brake: brief 0.12s pause then engage Reverse gear
             this.brakeHoldTimer += dt;
             if (this.brakeHoldTimer < 0.12 && !this.reversing) {
               forwardVel = 0;
@@ -1130,19 +1567,18 @@
           }
         } else {
           this.brakeHoldTimer = 0;
+          this.reversing = false;
           if (forwardVel < 0) {
-            // Releasing brake while reversing quickly decelerates back into 1st gear
-            forwardVel = Math.min(0, forwardVel + 620 * dt);
-            this.reversing = forwardVel < -5;
+            // Smoothly and continuously accelerate through 0 without clamping so rebounds never stall the car
+            forwardVel += (engineForce + 520) * dt;
           } else {
-            this.reversing = false;
             const speedRatio = Math.min(1, Math.max(0, forwardVel / maxSpeed));
             const torqueCurve = Math.max(0.22, 1.06 - speedRatio * 0.82);
             forwardVel += engineForce * torqueCurve * dt;
           }
         }
 
-        // 5. Authentic Slip-Angle Drifting Physics (Independent of braking)
+        // 5. Slip-Angle Drifting Physics
         const tarmacLateralGrip = 4.25;
         const gravelLateralGrip = 1.50;
         let lateralGrip = this.surface === 'offtrack'
@@ -1151,34 +1587,28 @@
 
         const absSteer = Math.abs(this.steer);
         if (absSteer > 0.1 && forwardVel > 75) {
-          // Breaking rear traction under hard steering
           const gripRelease = 0.64 * (1 - blend) + 0.48 * blend;
           lateralGrip *= gripRelease;
 
-          // Rear-wheel-drive pendulum kick
           const pendulumKick = (88 * (1 - blend) + 158 * blend) * Math.min(1.2, this.speed / 260);
           lateralVel -= this.steer * pendulumKick * dt;
         }
 
-        // Apply lateral tire bite
         lateralVel -= lateralVel * Math.min(1, lateralGrip * dt);
 
-        // Clamp extreme 90-degree spinouts so drifts feel controllable
         const maxLateral = Math.max(95, Math.abs(forwardVel) * (0.64 * (1 - blend) + 0.90 * blend));
         if (Math.abs(lateralVel) > maxLateral) {
           lateralVel = Math.sign(lateralVel) * maxLateral;
         }
 
-        // Rolling drag + natural cornering scrub
         const slideRatio = Math.min(1, Math.abs(lateralVel) / 185);
         const baseDrag = this.surface === 'offtrack' ? 1.15 : (0.21 * (1 - blend) + 0.27 * blend);
         const driftScrubDrag = slideRatio * (0.38 * (1 - blend) + 0.32 * blend);
         forwardVel -= forwardVel * Math.min(1, (baseDrag + driftScrubDrag) * dt);
 
-        // Track visual drift angle (angle between chassis nose and actual velocity vector)
         this.driftAngle = Math.atan2(lateralVel, Math.max(40, Math.abs(forwardVel)));
 
-        // 6. Reconstruct world velocity along the current chassis axes
+        // 6. Reconstruct world velocity
         this.vx = forwardVel * cosA - lateralVel * sinA;
         this.vy = forwardVel * sinA + lateralVel * cosA;
         this.speed = Math.hypot(this.vx, this.vy);
@@ -1186,7 +1616,7 @@
         this.x += this.vx * dt;
         this.y += this.vy * dt;
 
-        // 7. Smooth Roadside Bollard Deflection (Firm scrape instead of pinball bounce)
+        // 7A. Roadside Bollard Deflection (Glancing Guardrail Physics — Never Snags or Stops Auto-Accel)
         for (const b of world.barriers) {
           const dx = this.x - b.x;
           const dy = this.y - b.y;
@@ -1195,21 +1625,112 @@
           if (dist < minDist && dist > 0.001) {
             const nx = dx / dist;
             const ny = dy / dist;
-            this.x = b.x + nx * minDist;
-            this.y = b.y + ny * minDist;
-            const vn = this.vx * nx + this.vy * ny;
+            // Push car slightly past minDist so it doesn't re-collide on the next sub-step
+            this.x = b.x + nx * (minDist + 0.6);
+            this.y = b.y + ny * (minDist + 0.6);
+
+            // Use the track's inward normal at this barrier post so sliding along a row of bollards never catches a post face head-on
+            const bs = world.samples[b.index] || currentSample;
+            const inwardX = -bs.nx * (b.side || 1);
+            const inwardY = -bs.ny * (b.side || 1);
+            let defX = nx * 0.35 + inwardX * 0.65;
+            let defY = ny * 0.35 + inwardY * 0.65;
+            const defLen = Math.hypot(defX, defY) || 1;
+            defX /= defLen;
+            defY /= defLen;
+
+            const vn = this.vx * defX + this.vy * defY;
             if (vn < 0) {
-              this.vx -= 1.15 * vn * nx;
-              this.vy -= 1.15 * vn * ny;
-              this.vx *= 0.84;
-              this.vy *= 0.84;
-              audio.playImpact();
-              game.triggerCameraImpulse(-nx * 4.0, -ny * 4.0);
+              // Remove inward wall penetration velocity and add a small inward push back onto the road
+              this.vx -= 1.04 * vn * defX;
+              this.vy -= 1.04 * vn * defY;
+              this.vx += defX * 22;
+              this.vy += defY * 22;
+              // Preserve tangential speed along the barrier
+              this.vx *= 0.93;
+              this.vy *= 0.93;
+            }
+
+            // Gently guide the chassis nose along the road tangent so a head-on barrier hit self-corrects without needing steering input
+            const headingCross = Math.cos(this.angle) * defY - Math.sin(this.angle) * defX;
+            const nudgeSign = Math.abs(headingCross) > 0.08 ? Math.sign(headingCross) : (b.side || 1);
+            this.angle += nudgeSign * 2.4 * dt;
+
+            if (vn < -35 && this.impactCooldown <= 0) {
+              this.impactCooldown = 0.14;
+              audio.playImpact(false);
+              game.triggerCameraImpulse(-defX * 3.5, -defY * 3.5);
             }
           }
         }
 
-        // 8. Calculate Slip Intensity, Gears (R / 1-5), Persistent Drift Marks & Rooster Tails
+        // 7B. Trees, Bushes & Boulders Collisions
+        for (const obs of world.obstacles) {
+          if (obs.rustleCooldown > 0) obs.rustleCooldown = Math.max(0, obs.rustleCooldown - dt);
+          const dx = this.x - obs.x;
+          const dy = this.y - obs.y;
+          const dist = Math.hypot(dx, dy);
+          if (dist > obs.r + 22) continue;
+
+          if (obs.type === 'bush') {
+            // Soft brushable foliage scrub: slows car down and bursts leaves without hard wall stop
+            const brushDist = obs.collideR + 11;
+            if (dist < brushDist) {
+              const scrubFactor = Math.max(0.75, 1 - 3.6 * dt);
+              this.vx *= scrubFactor;
+              this.vy *= scrubFactor;
+              if (this.speed > 45 && obs.rustleCooldown <= 0) {
+                obs.rustleCooldown = 0.14;
+                audio.playBrushScrub();
+                game.triggerCameraImpulse((Math.random() - 0.5) * 2.6, (Math.random() - 0.5) * 2.6);
+                particles.spawnFoliageBurst(this.x, this.y, this.vx, this.vy, PALETTE.bush, PALETTE.pineLight);
+              }
+            }
+          } else {
+            // Solid Tree Trunk or Alpine Boulder collision with glancing slide-around assist
+            const minDist = obs.collideR + 12.5;
+            if (dist < minDist && dist > 0.001) {
+              const nx = dx / dist;
+              const ny = dy / dist;
+              this.x = obs.x + nx * (minDist + 0.6);
+              this.y = obs.y + ny * (minDist + 0.6);
+
+              const vn = this.vx * nx + this.vy * ny;
+              if (vn < 0) {
+                this.vx -= 1.06 * vn * nx;
+                this.vy -= 1.06 * vn * ny;
+                this.vx *= 0.85;
+                this.vy *= 0.85;
+              }
+
+              // Deflect car nose and slide tangentially around the trunk/boulder toward the road so it never pins nose-on
+              const toRoadX = currentSample.mx - obs.x;
+              const toRoadY = currentSample.my - obs.y;
+              const tang1X = -ny;
+              const tang1Y = nx;
+              const preferSign = (tang1X * toRoadX + tang1Y * toRoadY) >= 0 ? 1 : -1;
+              const slideX = tang1X * preferSign;
+              const slideY = tang1Y * preferSign;
+
+              this.vx += slideX * 36;
+              this.vy += slideY * 36;
+              this.angle += preferSign * 3.0 * dt;
+
+              if (vn < -40 && this.impactCooldown <= 0) {
+                this.impactCooldown = 0.16;
+                audio.playImpact(true);
+                game.triggerCameraImpulse(-nx * 5.5, -ny * 5.5);
+                if (obs.type === 'tree') {
+                  particles.spawnFoliageBurst(obs.x, obs.y, -nx * 60, -ny * 60, PALETTE.pine, PALETTE.terracotta);
+                } else {
+                  particles.spawnFoliageBurst(this.x, this.y, -nx * 50, -ny * 50, PALETTE.rock, PALETTE.cream);
+                }
+              }
+            }
+          }
+        }
+
+        // 8. Slip Intensity, Gears, Persistent Drift Marks & Rooster Tails
         const slipThreshold = 110 * (1 - blend) + 68 * blend;
         this.slipAngle = Math.min(1, Math.abs(lateralVel) / slipThreshold);
 
@@ -1227,7 +1748,6 @@
 
         audio.update(this.rpm, Math.max(this.slipAngle, (this.braking && !this.reversing && this.speed > 40) ? 0.45 : 0), this.surface, normSpeed);
 
-        // Wheel world positions for persistent drift tracks
         const rearOffset = -14;
         const frontOffset = 12;
         const rearTrackHalf = 9.0;
@@ -1265,7 +1785,6 @@
         this.prevFrontLeft = { x: flX, y: flY };
         this.prevFrontRight = { x: frX, y: frY };
 
-        // Emit tactile gravel rooster-tails on dirt or tire smoke puffs on hard tarmac drifts
         if ((this.surface === 'gravel' || this.surface === 'offtrack') && this.speed > 60) {
           const spawnChance = 0.5 + this.slipAngle * 0.5;
           if (Math.random() < spawnChance) {
@@ -1286,7 +1805,7 @@
       }
 
       spawn(x, y, vx, vy, surface, slipIntensity = 0.3) {
-        if (this.list.length > 120) this.list.shift();
+        if (this.list.length > 150) this.list.shift();
         let color = PALETTE.gravelDark;
         if (surface === 'gravel') {
           color = Math.random() > 0.45 ? PALETTE.paperDark : PALETTE.gravelDark;
@@ -1303,6 +1822,24 @@
           size: 3 + Math.random() * 4.5 + slipIntensity * 2.5,
           color
         });
+      }
+
+      spawnFoliageBurst(x, y, baseVx, baseVy, primaryColor, secondaryColor) {
+        for (let i = 0; i < 10; i++) {
+          if (this.list.length > 150) this.list.shift();
+          const ang = Math.random() * Math.PI * 2;
+          const spd = 35 + Math.random() * 95;
+          this.list.push({
+            x: x + (Math.random() - 0.5) * 14,
+            y: y + (Math.random() - 0.5) * 14,
+            vx: baseVx * 0.25 + Math.cos(ang) * spd,
+            vy: baseVy * 0.25 + Math.sin(ang) * spd,
+            life: 0,
+            maxLife: 0.32 + Math.random() * 0.28,
+            size: 3.5 + Math.random() * 4.0,
+            color: i % 3 === 0 ? secondaryColor : primaryColor
+          });
+        }
       }
 
       update(dt) {
@@ -1342,23 +1879,22 @@
         this.audio = new RallyAudio();
 
         this.currentStage = 0;
-        this.state = 'ready'; // 'ready' | 'running' | 'finished'
+        this.state = 'ready';
         this.runTime = 0;
         this.lastSplitTime = 0;
         this.sectorTimes = [null, null, null];
+        this.sectorSubCheckpoints = [false, false, false]; // Requires passing midpoint of each sector before its split gate
+        this.noticeTimer = 0;
         this.bestRecords = new Array(STAGES.length).fill(null);
 
-        // Ghost Recording at 20Hz
         this.currentGhost = [];
         this.ghostSampleTimer = 0;
 
-        // Input state (Left / Right Steering + Hold-Both Brake)
         this.keys = { left: false, right: false, brake: false };
         this.touches = new Map();
         this.input = { left: false, right: false, brake: false };
         this.hasInteracted = false;
 
-        // Camera state with velocity lead and micro-impulse
         this.cam = { x: 0, y: 0, impulseX: 0, impulseY: 0 };
 
         this.setupEvents();
@@ -1369,7 +1905,6 @@
       setupEvents() {
         window.addEventListener('resize', () => this.resize());
 
-        // Unlock Web Audio automatically on the very first user gesture anywhere
         const unlockAudioOnce = () => {
           this.audio.unlock();
         };
@@ -1377,7 +1912,6 @@
         window.addEventListener('touchstart', unlockAudioOnce, { passive: true });
         window.addEventListener('keydown', unlockAudioOnce, { passive: true });
 
-        // Keyboard Controls
         window.addEventListener('keydown', (e) => {
           if (e.code === 'ArrowLeft' || e.code === 'KeyA') this.keys.left = true;
           if (e.code === 'ArrowRight' || e.code === 'KeyD') this.keys.right = true;
@@ -1398,7 +1932,14 @@
           this.syncInput();
         });
 
-        // Split-Screen Native Touch Controls (Left = Steer L, Right = Steer R, Hold Both = Brake / Reverse)
+        window.addEventListener('blur', () => {
+          this.keys.left = false;
+          this.keys.right = false;
+          this.keys.brake = false;
+          this.touches.clear();
+          this.syncInput();
+        });
+
         const handleTouch = (e) => {
           e.preventDefault();
           this.audio.unlock();
@@ -1419,7 +1960,6 @@
         this.canvas.addEventListener('touchend', handleTouch, { passive: false });
         this.canvas.addEventListener('touchcancel', handleTouch, { passive: false });
 
-        // UI Button Listeners
         document.getElementById('stageMenuBtn').addEventListener('click', () => {
           document.getElementById('stageModal').classList.remove('hidden');
         });
@@ -1471,12 +2011,10 @@
         const rawRight = this.keys.right || touchRight;
         const holdBoth = rawLeft && rawRight;
 
-        // Holding both sides strictly brakes in a straight line without pulling steering
         this.input.brake = holdBoth || this.keys.brake;
         this.input.left = holdBoth ? false : rawLeft;
         this.input.right = holdBoth ? false : rawRight;
 
-        // Visual feedback on bottom corner brackets & brake badge
         const leftInd = document.getElementById('leftTouchIndicator');
         const rightInd = document.getElementById('rightTouchIndicator');
         const brakeInd = document.getElementById('brakeTouchIndicator');
@@ -1523,7 +2061,6 @@
       }
 
       restartStage() {
-        // Re-bake clean track surface so fresh run starts with clean gravel/tarmac
         this.world.bakeCanvas();
         const pose = this.world.startPose;
         this.car.reset(pose.x, pose.y, pose.angle);
@@ -1533,6 +2070,9 @@
         this.runTime = 0;
         this.lastSplitTime = 0;
         this.sectorTimes = [null, null, null];
+        this.sectorSubCheckpoints = [false, false, false];
+        this.noticeTimer = 0;
+        document.getElementById('courseNotice').classList.add('hidden');
         this.currentGhost = [];
         this.ghostSampleTimer = 0;
         this.state = 'running';
@@ -1552,6 +2092,13 @@
         }
 
         this.runTime += dt;
+        if (this.noticeTimer > 0) {
+          this.noticeTimer -= dt;
+          if (this.noticeTimer <= 0) {
+            document.getElementById('courseNotice').classList.add('hidden');
+          }
+        }
+
         this.car.update(dt, this.input, this.world, this.particles, this.audio);
         this.particles.update(dt);
 
@@ -1566,31 +2113,67 @@
           });
         }
 
-        // Check Sector Splits & Finish Gate
-        const idx = this.car.closestSampleIdx;
+        // Strict Sequential 3-Sector & Sub-Checkpoint Verification
+        const progIdx = this.car.maxProgressIdx;
         const sIndices = this.world.sectorIndices;
+        const midS1 = Math.floor(sIndices[0] * 0.5);
+        const midS2 = Math.floor((sIndices[0] + sIndices[1]) * 0.5);
+        const midS3 = Math.floor((sIndices[1] + sIndices[2]) * 0.5);
 
-        if (this.sectorTimes[0] === null && idx >= sIndices[0]) {
+        // Verify sector midpoints in order
+        if (progIdx >= midS1) {
+          this.sectorSubCheckpoints[0] = true;
+        }
+        if (this.sectorTimes[0] !== null && progIdx >= midS2) {
+          this.sectorSubCheckpoints[1] = true;
+        }
+        if (this.sectorTimes[1] !== null && progIdx >= midS3) {
+          this.sectorSubCheckpoints[2] = true;
+        }
+
+        // Trigger Sector 1 only after passing S1 midpoint
+        if (this.sectorTimes[0] === null && this.sectorSubCheckpoints[0] && progIdx >= sIndices[0]) {
           const splitDuration = this.runTime - this.lastSplitTime;
           this.lastSplitTime = this.runTime;
           this.sectorTimes[0] = splitDuration;
+          this.audio.playSplitBeep();
           this.updateSectorBox(0, splitDuration);
         }
-        if (this.sectorTimes[0] !== null && this.sectorTimes[1] === null && idx >= sIndices[1]) {
+        // Trigger Sector 2 only after completing S1 and passing S2 midpoint
+        else if (this.sectorTimes[0] !== null && this.sectorTimes[1] === null && this.sectorSubCheckpoints[1] && progIdx >= sIndices[1]) {
           const splitDuration = this.runTime - this.lastSplitTime;
           this.lastSplitTime = this.runTime;
           this.sectorTimes[1] = splitDuration;
+          this.audio.playSplitBeep();
           this.updateSectorBox(1, splitDuration);
         }
-        if (this.sectorTimes[1] !== null && this.sectorTimes[2] === null && idx >= sIndices[2]) {
+        // Trigger Sector 3 (Finish) ONLY if S1, S2, and S3 midpoint are all completed!
+        else if (
+          this.sectorTimes[0] !== null &&
+          this.sectorTimes[1] !== null &&
+          this.sectorTimes[2] === null &&
+          this.sectorSubCheckpoints[2] &&
+          progIdx >= sIndices[2]
+        ) {
           const splitDuration = this.runTime - this.lastSplitTime;
           this.lastSplitTime = this.runTime;
           this.sectorTimes[2] = splitDuration;
+          this.audio.playStartChime();
           this.updateSectorBox(2, splitDuration);
           this.completeStage();
         }
 
-        // Camera Lead: looks ahead along velocity vector so hairpins are visible early
+        // If player drives physically near the Finish Gate without having completed S1, S2, and S3 midpoint, block & warn!
+        const finishSample = this.world.samples[sIndices[2]];
+        if (finishSample && (!this.sectorSubCheckpoints[2] || this.sectorTimes[0] === null || this.sectorTimes[1] === null)) {
+          const distToFinish = Math.hypot(this.car.x - finishSample.x, this.car.y - finishSample.y);
+          if (distToFinish < finishSample.w * 0.75) {
+            this.noticeTimer = 2.2;
+            document.getElementById('courseNotice').classList.remove('hidden');
+          }
+        }
+
+        // Camera Lead
         const leadX = this.car.x + this.car.vx * 0.27;
         const leadY = this.car.y + this.car.vy * 0.27;
         this.cam.x += (leadX - this.cam.x) * Math.min(1, 7.8 * dt);
@@ -1675,6 +2258,104 @@
         }
       }
 
+      /**
+       * Renders an infinite, seamless Swiss topographic map background in world coordinates
+       * so the terrain NEVER ends or shows a hard edge anywhere.
+       */
+      drawInfiniteTopography(ctx, camX, camY, viewW, viewH) {
+        const startX = Math.floor((camX - viewW * 0.65) / 360) * 360;
+        const endX = Math.ceil((camX + viewW * 0.65) / 360) * 360;
+        const startY = Math.floor((camY - viewH * 0.65) / 360) * 360;
+        const endY = Math.ceil((camY + viewH * 0.65) / 360) * 360;
+
+        // 1. Subtle Surveyor Grid Lines & Crosshairs
+        ctx.strokeStyle = 'rgba(206, 191, 169, 0.42)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        for (let gx = startX; gx <= endX; gx += 360) {
+          ctx.moveTo(gx, startY);
+          ctx.lineTo(gx, endY);
+        }
+        for (let gy = startY; gy <= endY; gy += 360) {
+          ctx.moveTo(startX, gy);
+          ctx.lineTo(endX, gy);
+        }
+        ctx.stroke();
+
+        // 2. Infinite Organic Topographic Contour Ribbons (Wave-modulated isolines across the viewport)
+        ctx.strokeStyle = PALETTE.paperDark;
+        ctx.lineWidth = 1.6;
+        const contourSpacing = 180;
+        const firstContourY = Math.floor((camY - viewH * 0.7) / contourSpacing) * contourSpacing;
+        const lastContourY = Math.ceil((camY + viewH * 0.7) / contourSpacing) * contourSpacing;
+        const stepX = 90;
+
+        for (let baseY = firstContourY; baseY <= lastContourY; baseY += contourSpacing) {
+          const lineIndex = Math.round(baseY / contourSpacing);
+          ctx.lineWidth = (lineIndex % 4 === 0) ? 2.2 : 1.3;
+          ctx.strokeStyle = (lineIndex % 4 === 0) ? PALETTE.paperDeep : PALETTE.paperDark;
+
+          ctx.beginPath();
+          let first = true;
+          for (let wx = startX - 180; wx <= endX + 180; wx += stepX) {
+            const wave1 = Math.sin(wx * 0.0018 + lineIndex * 0.85 + this.currentStage) * 65;
+            const wave2 = Math.cos(wx * 0.0042 - lineIndex * 1.4) * 28;
+            const wy = baseY + wave1 + wave2;
+            if (first) {
+              ctx.moveTo(wx, wy);
+              first = false;
+            } else {
+              ctx.lineTo(wx, wy);
+            }
+          }
+          ctx.stroke();
+        }
+
+        // 3. Surveyor Crosshair Ticks (+) & Out-of-Bounds Distant Alpine Scrub (so outside 0..4600 is lush & populated)
+        for (let gx = startX; gx <= endX; gx += 360) {
+          for (let gy = startY; gy <= endY; gy += 360) {
+            ctx.strokeStyle = 'rgba(30, 30, 28, 0.22)';
+            ctx.lineWidth = 1.2;
+            ctx.beginPath();
+            ctx.moveTo(gx - 6, gy);
+            ctx.lineTo(gx + 6, gy);
+            ctx.moveTo(gx, gy - 6);
+            ctx.lineTo(gx, gy + 6);
+            ctx.stroke();
+
+            // Deterministic hash for cell decoration
+            const cellHash = Math.abs((gx * 73856093) ^ (gy * 19349663) ^ (this.currentStage * 83492791)) % 1000;
+
+            // Subtle terrain grass/earth stipple tufts in every cell
+            const tx = gx + (cellHash % 260) - 130;
+            const ty = gy + ((cellHash * 13) % 260) - 130;
+            ctx.strokeStyle = PALETTE.paperDeep;
+            ctx.lineWidth = 1.4;
+            ctx.beginPath();
+            ctx.moveTo(tx - 5, ty + 2);
+            ctx.lineTo(tx, ty - 4);
+            ctx.lineTo(tx + 5, ty + 2);
+            ctx.stroke();
+
+            // If this cell lies outside the 4600x4600 baked stage bounds (or near the outer border),
+            // draw procedural alpine trees & rocks so the world visually continues forever!
+            const W = this.world.worldSize;
+            if (gx < 220 || gx > W - 220 || gy < 220 || gy > W - 220) {
+              const px = gx + ((cellHash * 7) % 280) - 140;
+              const py = gy + ((cellHash * 19) % 280) - 140;
+              const pr = 18 + (cellHash % 14);
+              this.world.drawPineTree(ctx, {
+                x: px,
+                y: py,
+                r: pr,
+                seed: cellHash,
+                angle: (cellHash % 62) * 0.1
+              });
+            }
+          }
+        }
+      }
+
       render() {
         const ctx = this.ctx;
         const w = this.canvas.width;
@@ -1684,20 +2365,25 @@
         ctx.fillStyle = PALETTE.paper;
         ctx.fillRect(0, 0, w, h);
 
-        // Responsive zoom level with subtle high-speed FOV pull-back so corners stay readable
         const minDim = Math.min(window.innerWidth, window.innerHeight);
         const baseScale = minDim < 500 ? 0.72 : 0.86;
         const speedPullback = 1 - Math.min(0.1, (this.car.speed / 640) * 0.1);
         const zoom = this.dpr * baseScale * speedPullback;
 
+        const camX = this.cam.x + this.cam.impulseX;
+        const camY = this.cam.y + this.cam.impulseY;
+
         ctx.translate(w * 0.5, h * 0.5);
         ctx.scale(zoom, zoom);
-        ctx.translate(-(this.cam.x + this.cam.impulseX), -(this.cam.y + this.cam.impulseY));
+        ctx.translate(-camX, -camY);
 
-        // 1. Draw Baked World & Persistent Skidmarks
+        // 0. Draw Seamless Infinite Topographic Map Background
+        this.drawInfiniteTopography(ctx, camX, camY, w / zoom, h / zoom);
+
+        // 1. Draw Baked World (Variable-Width Track, Feathered Transitions, Trees, Bushes, Rocks & Skidmarks)
         ctx.drawImage(this.world.canvas, 0, 0);
 
-        // 2. Draw Dust / Gravel Particles
+        // 2. Draw Dust, Gravel & Foliage Burst Particles
         this.particles.draw(ctx);
 
         // 3. Draw Personal Best Blueprint Ghost Car
@@ -1752,13 +2438,11 @@
         ctx.closePath();
         ctx.fill();
 
-        // 2. Four Wide Rally Tires (Front wheels articulate with steering + counter-steer)
+        // 2. Four Wide Rally Tires
         ctx.fillStyle = PALETTE.ink;
-        // Rear Wide Tires
         ctx.fillRect(-16, -13.5, 9, 4.5);
         ctx.fillRect(-16, 9, 9, 4.5);
 
-        // Front Tires (turn with steering input and slightly counter-steer into deep drifts)
         const wheelAngle = car.steer * 0.44 - car.driftAngle * 0.25;
         ctx.save();
         ctx.translate(12, -11);
@@ -1772,32 +2456,32 @@
         ctx.fillRect(-4.5, -2.2, 9, 4.4);
         ctx.restore();
 
-        // 3. Sculpted 1970s Group 4 Widebody Chassis (Lancia Stratos / Alpine Wedge Silhouette)
+        // 3. Sculpted 1970s Group 4 Widebody Chassis
         ctx.fillStyle = PALETTE.cream;
         ctx.strokeStyle = PALETTE.ink;
         ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.moveTo(-20, -9.5);   // Rear left tail
-        ctx.lineTo(-17, -12);    // Rear left flared fender
-        ctx.lineTo(-7, -12);     // Rear arch taper
-        ctx.lineTo(-4, -9.5);    // Door waist
-        ctx.lineTo(7, -9.5);     // Front arch flare start
-        ctx.lineTo(10, -11.5);   // Front left fender flare
-        ctx.lineTo(16, -10.5);   // Front corner
-        ctx.lineTo(22, -6);      // Tapered wedge nose left
-        ctx.lineTo(22, 6);       // Tapered wedge nose right
-        ctx.lineTo(16, 10.5);    // Front right corner
-        ctx.lineTo(10, 11.5);    // Front right fender flare
-        ctx.lineTo(7, 9.5);      // Door waist right
+        ctx.moveTo(-20, -9.5);
+        ctx.lineTo(-17, -12);
+        ctx.lineTo(-7, -12);
+        ctx.lineTo(-4, -9.5);
+        ctx.lineTo(7, -9.5);
+        ctx.lineTo(10, -11.5);
+        ctx.lineTo(16, -10.5);
+        ctx.lineTo(22, -6);
+        ctx.lineTo(22, 6);
+        ctx.lineTo(16, 10.5);
+        ctx.lineTo(10, 11.5);
+        ctx.lineTo(7, 9.5);
         ctx.lineTo(-4, 9.5);
-        ctx.lineTo(-7, 12);      // Rear right flared fender
+        ctx.lineTo(-7, 12);
         ctx.lineTo(-17, 12);
-        ctx.lineTo(-20, 9.5);    // Rear right tail
+        ctx.lineTo(-20, 9.5);
         ctx.closePath();
         ctx.fill();
         ctx.stroke();
 
-        // 4. Terracotta Works Rally Wedge Hood & Racing Stripes
+        // 4. Terracotta Works Rally Wedge Hood
         ctx.fillStyle = PALETTE.terracotta;
         ctx.beginPath();
         ctx.moveTo(4, -7.5);
@@ -1808,11 +2492,10 @@
         ctx.fill();
         ctx.stroke();
 
-        // Deep Recessed Radiator Extractor Vent on Nose
         ctx.fillStyle = PALETTE.asphalt;
         ctx.fillRect(10, -4, 5, 8);
 
-        // 5. Wrap-Around Helmet Visor Windshield & Side Windows
+        // 5. Wrap-Around Helmet Visor Windshield
         ctx.fillStyle = PALETTE.asphalt;
         ctx.strokeStyle = PALETTE.ink;
         ctx.lineWidth = 1.5;
@@ -1827,7 +2510,7 @@
         ctx.fill();
         ctx.stroke();
 
-        // Roof Panel with Number Roundel (#14) & Terracotta Center Stripe
+        // Roof Panel with Number Roundel
         ctx.fillStyle = PALETTE.terracotta;
         ctx.fillRect(-9, -2.2, 8, 4.4);
 
@@ -1839,20 +2522,18 @@
         ctx.fill();
         ctx.stroke();
 
-        // 6. Mid-Engine Slatted Deck Louvers & Rear Ducktail Spoiler
+        // 6. Mid-Engine Louvers & Rear Wing
         ctx.fillStyle = PALETTE.asphalt;
         for (let lx = -15; lx <= -10; lx += 2.5) {
           ctx.fillRect(lx, -5.5, 1.5, 11);
         }
 
-        // Rear Ducktail Wing
         ctx.fillStyle = PALETTE.terracotta;
         ctx.strokeStyle = PALETTE.ink;
         ctx.lineWidth = 1.8;
         ctx.fillRect(-21, -9.5, 3.5, 19);
         ctx.strokeRect(-21, -9.5, 3.5, 19);
 
-        // Rear Brake & Reverse Lights (Red when braking, bright cream/white when reversing)
         if (car.braking) {
           ctx.fillStyle = car.reversing ? PALETTE.cream : PALETTE.terracotta;
           ctx.strokeStyle = PALETTE.ink;
