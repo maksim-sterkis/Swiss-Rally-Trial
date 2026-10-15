@@ -84,124 +84,154 @@
 
   <!-- Minimalist Swiss Heuer Timing Strip (Top) -->
   <header class="fixed top-0 left-0 right-0 z-20 pointer-events-none px-2 pt-2 sm:px-5 sm:pt-4 flex flex-col gap-1.5 max-w-5xl mx-auto">
-    <div class="print-card pointer-events-auto px-2 py-1.5 sm:px-4 sm:py-2.5 flex items-center justify-between gap-1.5 sm:gap-3">
-      <!-- Stage Indicator & Selector Button -->
-      <div class="flex items-center gap-1.5 sm:gap-2.5 min-w-0 flex-1">
-        <button id="stageMenuBtn" class="print-btn px-2 py-1 text-[11px] sm:text-sm font-bold tracking-tight flex items-center gap-1 shrink-0" title="Select Stage">
-          <span class="inline-block w-1.5 h-1.5 sm:w-2 sm:h-2 bg-[#C85A32]"></span>
-          <span id="stageCodeLabel">SS1</span>
-          <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M6 9l6 6 6-6"/>
-          </svg>
-        </button>
-        <div class="min-w-0 flex-1">
-          <div id="stageNameLabel" class="font-display font-bold text-[11px] sm:text-sm uppercase tracking-tight sm:tracking-wider truncate leading-tight">Col de Turini</div>
-          <div id="surfaceBadge" class="text-[9px] sm:text-xs font-bold uppercase tracking-wider text-[#3A5A40] truncate leading-tight">TARMAC</div>
+    <div class="print-card pointer-events-auto px-2.5 py-1.5 sm:px-4 sm:py-2.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5 sm:gap-3">
+      <!-- Top Row on Mobile / Left Group on Desktop: Stage Selector + Stage Name + Utility Buttons (Mobile) -->
+      <div class="flex items-center justify-between sm:justify-start gap-2 w-full sm:w-auto min-w-0">
+        <div class="flex items-center gap-2 min-w-0">
+          <button id="stageMenuBtn" class="print-btn px-2 py-1 text-[11px] sm:text-sm font-bold tracking-tight flex items-center gap-1 shrink-0" title="Select Stage">
+            <span class="inline-block w-1.5 h-1.5 sm:w-2 sm:h-2 bg-[#C85A32]"></span>
+            <span id="stageCodeLabel">SS1</span>
+            <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M6 9l6 6 6-6"/>
+            </svg>
+          </button>
+          <div class="min-w-0">
+            <div id="stageNameLabel" class="font-display font-bold text-xs sm:text-sm uppercase tracking-tight sm:tracking-wider leading-tight whitespace-nowrap">Col de Turini</div>
+            <div id="surfaceBadge" class="text-[9px] sm:text-xs font-bold uppercase tracking-wider text-[#3A5A40] leading-tight whitespace-nowrap">TARMAC</div>
+          </div>
+        </div>
+
+        <!-- Utility Buttons on Mobile Top-Right -->
+        <div class="flex sm:hidden items-center gap-1.5 shrink-0">
+          <button id="restartBtnMobile" class="print-btn px-2 py-1 text-[10px] font-bold uppercase tracking-tight whitespace-nowrap" title="Restart Stage (R)">
+            RESET
+          </button>
+          <button id="audioBtnMobile" class="print-btn px-2 py-1 text-[10px] font-bold uppercase tracking-tight bg-[#3A5A40] text-[#F4F1EA] whitespace-nowrap" title="Toggle Sound (M)">
+            SOUND:ON
+          </button>
         </div>
       </div>
 
-      <!-- Primary Chronometer -->
-      <div class="flex items-center gap-2 sm:gap-5 shrink-0">
-        <div class="text-right">
-          <div class="text-[8px] sm:text-[10px] uppercase tracking-wider opacity-70 leading-none">TIME</div>
-          <div id="currentTimeLabel" class="text-xs sm:text-xl font-extrabold tabular-nums tracking-tight leading-tight">00:00.00</div>
+      <!-- Second Row on Mobile / Right Group on Desktop: Primary Chronometer & Desktop Utility Buttons -->
+      <div class="flex items-center justify-between sm:justify-end gap-3 sm:gap-5 border-t border-[#1E1E1C]/20 pt-1 sm:border-t-0 sm:pt-0 w-full sm:w-auto shrink-0">
+        <div class="flex items-center gap-3 sm:gap-5">
+          <div class="text-left sm:text-right">
+            <div class="text-[8px] sm:text-[10px] uppercase tracking-wider opacity-70 leading-none">TIME</div>
+            <div id="currentTimeLabel" class="text-sm sm:text-xl font-extrabold tabular-nums tracking-tight leading-tight whitespace-nowrap">00:00.00</div>
+          </div>
+          <div class="text-left sm:text-right border-l-2 border-[#1E1E1C] pl-2.5 sm:pl-4">
+            <div class="text-[8px] sm:text-[10px] uppercase tracking-widest opacity-70 leading-none">BEST</div>
+            <div id="bestTimeLabel" class="text-xs sm:text-base font-bold tabular-nums text-[#C85A32] leading-tight whitespace-nowrap">--:--.--</div>
+          </div>
         </div>
-        <div class="hidden sm:block text-right border-l-2 border-[#1E1E1C] pl-3 sm:pl-4">
-          <div class="text-[10px] uppercase tracking-widest opacity-70 leading-none">BEST</div>
-          <div id="bestTimeLabel" class="text-sm sm:text-base font-bold tabular-nums text-[#C85A32] leading-tight">--:--.--</div>
-        </div>
-      </div>
 
-      <!-- Utility Buttons (Reset & Audio) -->
-      <div class="flex items-center gap-1 sm:gap-2 shrink-0">
-        <button id="restartBtn" class="print-btn px-1.5 sm:px-2.5 py-1 text-[10px] sm:text-xs font-bold uppercase tracking-tight sm:tracking-wider" title="Restart Stage (R)">
-          RESET
-        </button>
-        <button id="audioBtn" class="print-btn px-1.5 sm:px-2.5 py-1 text-[10px] sm:text-xs font-bold uppercase tracking-tight sm:tracking-wider bg-[#3A5A40] text-[#F4F1EA]" title="Toggle Engine & Surface Sound (M)">
-          SOUND:ON
-        </button>
+        <!-- Utility Buttons on Desktop -->
+        <div class="hidden sm:flex items-center gap-2 shrink-0">
+          <button id="restartBtn" class="print-btn px-2.5 py-1 text-xs font-bold uppercase tracking-wider whitespace-nowrap" title="Restart Stage (R)">
+            RESET
+          </button>
+          <button id="audioBtn" class="print-btn px-2.5 py-1 text-xs font-bold uppercase tracking-wider bg-[#3A5A40] text-[#F4F1EA] whitespace-nowrap" title="Toggle Engine & Surface Sound (M)">
+            SOUND:ON
+          </button>
+        </div>
       </div>
     </div>
 
     <!-- Sector Split Bar & Mechanical Telemetry -->
     <div class="flex items-center justify-between gap-1 text-[10px] sm:text-[11px] font-bold">
-      <div class="flex items-center gap-1 min-w-0">
-        <div id="sector1Box" class="bg-[#F4F1EA] border-2 border-[#1E1E1C] px-1.5 sm:px-2 py-0.5 tabular-nums truncate">S1 --.--</div>
-        <div id="sector2Box" class="bg-[#F4F1EA] border-2 border-[#1E1E1C] px-1.5 sm:px-2 py-0.5 tabular-nums truncate">S2 --.--</div>
-        <div id="sector3Box" class="bg-[#F4F1EA] border-2 border-[#1E1E1C] px-1.5 sm:px-2 py-0.5 tabular-nums truncate">S3 --.--</div>
+      <div class="flex items-center gap-1">
+        <div id="sector1Box" class="bg-[#F4F1EA] border-2 border-[#1E1E1C] px-1.5 sm:px-2.5 py-0.5 tabular-nums whitespace-nowrap">S1 --.--</div>
+        <div id="sector2Box" class="bg-[#F4F1EA] border-2 border-[#1E1E1C] px-1.5 sm:px-2.5 py-0.5 tabular-nums whitespace-nowrap">S2 --.--</div>
+        <div id="sector3Box" class="bg-[#F4F1EA] border-2 border-[#1E1E1C] px-1.5 sm:px-2.5 py-0.5 tabular-nums whitespace-nowrap">S3 --.--</div>
       </div>
-      <div class="bg-[#F4F1EA] border-2 border-[#1E1E1C] px-2 py-0.5 tabular-nums flex items-center gap-1.5 shrink-0">
+      <div class="bg-[#F4F1EA] border-2 border-[#1E1E1C] px-2 sm:px-2.5 py-0.5 tabular-nums flex items-center gap-1.5 shrink-0 whitespace-nowrap">
         <span id="gearLabel" class="text-[#C85A32] font-extrabold">G1</span>
         <span id="speedLabel">000 KM/H</span>
       </div>
     </div>
 
     <!-- Course Warning Banner (Appears if trying to cross finish early or off-course) -->
-    <div id="courseNotice" class="hidden self-center bg-[#C85A32] text-[#F4F1EA] border-2 border-[#1E1E1C] px-3 py-1 text-[10px] sm:text-xs font-bold uppercase tracking-wider shadow-[2px_2px_0px_#1E1E1C]">
+    <div id="courseNotice" class="hidden self-center bg-[#C85A32] text-[#F4F1EA] border-2 border-[#1E1E1C] px-3 py-1 text-[10px] sm:text-xs font-bold uppercase tracking-wider text-center shadow-[2px_2px_0px_#1E1E1C]">
       COMPLETE ALL 3 SECTORS IN ORDER BEFORE FINISH
     </div>
   </header>
 
   <!-- Stage Selection & Instructions Drawer -->
-  <div id="stageModal" class="fixed inset-0 z-30 bg-[#1E1E1C]/40 flex items-center justify-center p-2.5">
-    <div class="print-card w-full max-w-md p-2.5 sm:p-3.5 flex flex-col gap-1.5">
-      <div class="flex items-center justify-between border-b-2 border-[#1E1E1C] pb-1">
-        <div class="flex items-center gap-1.5">
-          <span class="text-[9px] font-bold uppercase tracking-widest bg-[#C85A32] text-[#F4F1EA] px-1.5 py-0.5">1974 TRIAL</span>
+  <div id="stageModal" class="fixed inset-0 z-30 bg-[#1E1E1C]/40 flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
+    <div class="print-card w-full max-w-xl p-3 sm:p-4 flex flex-col gap-2 my-auto">
+      <div class="flex items-center justify-between border-b-2 border-[#1E1E1C] pb-1.5 gap-2">
+        <div class="flex items-center gap-1.5 flex-wrap">
+          <span class="text-[9px] font-bold uppercase tracking-widest bg-[#C85A32] text-[#F4F1EA] px-1.5 py-0.5 whitespace-nowrap">1974 TRIAL</span>
           <h1 class="font-display text-sm sm:text-base font-bold uppercase tracking-tight">Tarmac & Gravel</h1>
+          <span id="saveStatusBadge" class="text-[9px] font-bold uppercase tracking-wider text-[#3A5A40] px-1.5 py-0.5 bg-[#EAE4DC] border border-[#1E1E1C]">SAVE READY</span>
         </div>
-        <button id="closeModalBtn" class="print-btn px-2 py-0.5 text-[10px] font-bold uppercase">CLOSE</button>
+        <button id="closeModalBtn" class="print-btn px-2.5 py-0.5 text-[10px] font-bold uppercase shrink-0">CLOSE</button>
       </div>
 
-      <!-- Compact Stage List (5 Stages) -->
-      <div class="flex flex-col gap-1">
-        <button data-stage="0" class="stage-option print-btn active-stage px-2 py-1 text-left flex items-center justify-between">
-          <span class="font-display font-bold text-[11px] sm:text-xs uppercase truncate pr-2">SS1 — Col de Turini <span class="font-normal opacity-80 text-[10px]">• Tarmac / Cracked / Gravel</span></span>
-          <span id="modalBest0" class="text-[10px] font-bold tabular-nums shrink-0">--:--.--</span>
+      <!-- Full-Text Stage List (5 Stages, Zero Truncation) -->
+      <div class="flex flex-col gap-1.5">
+        <button data-stage="0" class="stage-option print-btn active-stage px-2.5 py-1.5 text-left flex items-center justify-between gap-2">
+          <div class="flex flex-col sm:flex-row sm:items-baseline sm:gap-1.5 min-w-0">
+            <span class="font-display font-bold text-[11px] sm:text-xs uppercase">SS1 — Col de Turini</span>
+            <span class="font-normal opacity-85 text-[9px] sm:text-[10px]">• Tarmac / Cracked / Gravel</span>
+          </div>
+          <span id="modalBest0" class="text-[10px] sm:text-xs font-bold tabular-nums shrink-0">--:--.--</span>
         </button>
-        <button data-stage="1" class="stage-option print-btn px-2 py-1 text-left flex items-center justify-between">
-          <span class="font-display font-bold text-[11px] sm:text-xs uppercase truncate pr-2">SS2 — Val d'Orcia <span class="font-normal opacity-80 text-[10px]">• Packed Dirt / Gravel / Old Tar</span></span>
-          <span id="modalBest1" class="text-[10px] font-bold tabular-nums shrink-0">--:--.--</span>
+        <button data-stage="1" class="stage-option print-btn px-2.5 py-1.5 text-left flex items-center justify-between gap-2">
+          <div class="flex flex-col sm:flex-row sm:items-baseline sm:gap-1.5 min-w-0">
+            <span class="font-display font-bold text-[11px] sm:text-xs uppercase">SS2 — Val d'Orcia</span>
+            <span class="font-normal opacity-85 text-[9px] sm:text-[10px]">• Packed Dirt / Gravel / Old Tar</span>
+          </div>
+          <span id="modalBest1" class="text-[10px] sm:text-xs font-bold tabular-nums shrink-0">--:--.--</span>
         </button>
-        <button data-stage="2" class="stage-option print-btn px-2 py-1 text-left flex items-center justify-between">
-          <span class="font-display font-bold text-[11px] sm:text-xs uppercase truncate pr-2">SS3 — Monte Cassino <span class="font-normal opacity-80 text-[10px]">• All 4 Surfaces Mixed</span></span>
-          <span id="modalBest2" class="text-[10px] font-bold tabular-nums shrink-0">--:--.--</span>
+        <button data-stage="2" class="stage-option print-btn px-2.5 py-1.5 text-left flex items-center justify-between gap-2">
+          <div class="flex flex-col sm:flex-row sm:items-baseline sm:gap-1.5 min-w-0">
+            <span class="font-display font-bold text-[11px] sm:text-xs uppercase">SS3 — Monte Cassino</span>
+            <span class="font-normal opacity-85 text-[9px] sm:text-[10px]">• All 4 Surfaces Mixed</span>
+          </div>
+          <span id="modalBest2" class="text-[10px] sm:text-xs font-bold tabular-nums shrink-0">--:--.--</span>
         </button>
-        <button data-stage="3" class="stage-option print-btn px-2 py-1 text-left flex items-center justify-between">
-          <span class="font-display font-bold text-[11px] sm:text-xs uppercase truncate pr-2">SS4 — Sanremo Passo <span class="font-normal opacity-80 text-[10px]">• Tarmac / Cracked Asphalt / Dirt</span></span>
-          <span id="modalBest3" class="text-[10px] font-bold tabular-nums shrink-0">--:--.--</span>
+        <button data-stage="3" class="stage-option print-btn px-2.5 py-1.5 text-left flex items-center justify-between gap-2">
+          <div class="flex flex-col sm:flex-row sm:items-baseline sm:gap-1.5 min-w-0">
+            <span class="font-display font-bold text-[11px] sm:text-xs uppercase">SS4 — Sanremo Passo</span>
+            <span class="font-normal opacity-85 text-[9px] sm:text-[10px]">• Tarmac / Cracked Asphalt / Dirt</span>
+          </div>
+          <span id="modalBest3" class="text-[10px] sm:text-xs font-bold tabular-nums shrink-0">--:--.--</span>
         </button>
-        <button data-stage="4" class="stage-option print-btn px-2 py-1 text-left flex items-center justify-between">
-          <span class="font-display font-bold text-[11px] sm:text-xs uppercase truncate pr-2">SS5 — Acropolis Special <span class="font-normal opacity-80 text-[10px]">• Loose Gravel / Dirt / Cracked</span></span>
-          <span id="modalBest4" class="text-[10px] font-bold tabular-nums shrink-0">--:--.--</span>
+        <button data-stage="4" class="stage-option print-btn px-2.5 py-1.5 text-left flex items-center justify-between gap-2">
+          <div class="flex flex-col sm:flex-row sm:items-baseline sm:gap-1.5 min-w-0">
+            <span class="font-display font-bold text-[11px] sm:text-xs uppercase">SS5 — Acropolis Special</span>
+            <span class="font-normal opacity-85 text-[9px] sm:text-[10px]">• Loose Gravel / Dirt / Cracked</span>
+          </div>
+          <span id="modalBest4" class="text-[10px] sm:text-xs font-bold tabular-nums shrink-0">--:--.--</span>
         </button>
       </div>
 
-      <!-- 4-Surface Handling Legend -->
-      <div class="grid grid-cols-4 gap-1 text-[8px] sm:text-[9px] font-bold uppercase text-center">
-        <div class="bg-[#2B2B2A] text-[#F4F1EA] border border-[#1E1E1C] py-0.5 px-1 truncate">TARMAC • MAX GRIP</div>
-        <div class="bg-[#484540] text-[#F4F1EA] border border-[#1E1E1C] py-0.5 px-1 truncate">CRACKED • BUMPY</div>
-        <div class="bg-[#9E7453] text-[#F4F1EA] border border-[#1E1E1C] py-0.5 px-1 truncate">DIRT • LOAMY</div>
-        <div class="bg-[#C4B49F] text-[#1E1E1C] border border-[#1E1E1C] py-0.5 px-1 truncate">GRAVEL • LOOSE</div>
+      <!-- 4-Surface Handling Legend (2x2 on mobile, 4-col on desktop, no text cut off) -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-[9px] sm:text-[10px] font-bold uppercase text-center">
+        <div class="bg-[#2B2B2A] text-[#F4F1EA] border border-[#1E1E1C] py-1 px-1.5 leading-tight">TARMAC • MAX GRIP</div>
+        <div class="bg-[#484540] text-[#F4F1EA] border border-[#1E1E1C] py-1 px-1.5 leading-tight">CRACKED • BUMPY</div>
+        <div class="bg-[#9E7453] text-[#F4F1EA] border border-[#1E1E1C] py-1 px-1.5 leading-tight">DIRT • LOAMY</div>
+        <div class="bg-[#C4B49F] text-[#1E1E1C] border border-[#1E1E1C] py-1 px-1.5 leading-tight">GRAVEL • LOOSE</div>
       </div>
 
       <!-- Compact Ergonomic Control Diagram (Left / Hold Both to Brake / Right) -->
-      <div class="bg-[#EAE4DC] border-2 border-[#1E1E1C] p-1.5 text-[10px] grid grid-cols-3 gap-1 text-center font-bold">
-        <div class="bg-[#F4F1EA] border border-[#1E1E1C] py-1 px-1">
+      <div class="bg-[#EAE4DC] border-2 border-[#1E1E1C] p-1.5 text-[10px] grid grid-cols-3 gap-1.5 text-center font-bold">
+        <div class="bg-[#F4F1EA] border border-[#1E1E1C] py-1 px-1 leading-tight">
           <div>LEFT / A</div>
-          <div class="text-[8px] opacity-75">STEER L</div>
+          <div class="text-[8px] sm:text-[9px] opacity-75">STEER L</div>
         </div>
-        <div class="bg-[#F4F1EA] border border-[#1E1E1C] py-1 px-1 text-[#C85A32]">
-          <div>HOLD BOTH</div>
-          <div class="text-[8px] text-[#1E1E1C] opacity-80">BRAKE / REV</div>
+        <div class="bg-[#F4F1EA] border border-[#1E1E1C] py-1 px-1 text-[#C85A32] leading-tight">
+          <div>HOLD BOTH / SPACE</div>
+          <div class="text-[8px] sm:text-[9px] text-[#1E1E1C] opacity-80">STOP 0.5s → REV</div>
         </div>
-        <div class="bg-[#F4F1EA] border border-[#1E1E1C] py-1 px-1">
+        <div class="bg-[#F4F1EA] border border-[#1E1E1C] py-1 px-1 leading-tight">
           <div>RIGHT / D</div>
-          <div class="text-[8px] opacity-75">STEER R</div>
+          <div class="text-[8px] sm:text-[9px] opacity-75">STEER R</div>
         </div>
       </div>
 
-      <button id="startStageBtn" class="print-btn bg-[#2B2B2A] text-[#F4F1EA] py-1.5 font-display font-bold text-xs sm:text-sm uppercase tracking-wider text-center">
+      <button id="startStageBtn" class="print-btn bg-[#2B2B2A] text-[#F4F1EA] py-2 font-display font-bold text-xs sm:text-sm uppercase tracking-wider text-center">
         START STAGE
       </button>
     </div>
@@ -298,7 +328,7 @@
         rgb: PALETTE.asphaltRGB,
         maxSpeed: 505,
         engineForce: 575,
-        brakeDecel: 585,
+        brakeDecel: 415,
         lateralGrip: 4.55,
         gripRelease: 0.65,
         pendulumKick: 84,
@@ -317,7 +347,7 @@
         rgb: PALETTE.crackedRGB,
         maxSpeed: 472,
         engineForce: 540,
-        brakeDecel: 495,
+        brakeDecel: 335,
         lateralGrip: 3.35,
         gripRelease: 0.56,
         pendulumKick: 112,
@@ -336,7 +366,7 @@
         rgb: PALETTE.dirtRGB,
         maxSpeed: 452,
         engineForce: 515,
-        brakeDecel: 455,
+        brakeDecel: 255,
         lateralGrip: 2.12,
         gripRelease: 0.52,
         pendulumKick: 142,
@@ -355,7 +385,7 @@
         rgb: PALETTE.gravelRGB,
         maxSpeed: 428,
         engineForce: 488,
-        brakeDecel: 395,
+        brakeDecel: 185,
         lateralGrip: 1.34,
         gripRelease: 0.45,
         pendulumKick: 174,
@@ -670,7 +700,7 @@
         this.engineBodyFormant.type = 'peaking';
         this.engineBodyFormant.frequency.value = 175;
         this.engineBodyFormant.Q.value = 1.4;
-        this.engineBodyFormant.gain.value = 3.5;
+        this.engineBodyFormant.gain.value = 4.2;
 
         this.engineLoadFilter = this.ctx.createBiquadFilter();
         this.engineLoadFilter.type = 'lowpass';
@@ -833,6 +863,34 @@
         osc.stop(now + 0.12);
       }
 
+      playUIClick(accent = false) {
+        if (navigator.vibrate) {
+          try { navigator.vibrate(accent ? 14 : 8); } catch (e) {}
+        }
+        if (!this.enabled) return;
+        this.unlock();
+        if (!this.ctx || this.ctx.state !== 'running') return;
+        const now = this.ctx.currentTime;
+
+        // Short mechanical switch click transient
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'triangle';
+        const startFreq = accent ? 540 : 420;
+        const endFreq = accent ? 190 : 145;
+        osc.frequency.setValueAtTime(startFreq, now);
+        osc.frequency.exponentialRampToValueAtTime(endFreq, now + 0.024);
+
+        gain.gain.setValueAtTime(0.001, now);
+        gain.gain.linearRampToValueAtTime(accent ? 0.38 : 0.30, now + 0.002);
+        gain.gain.exponentialRampToValueAtTime(0.0008, now + 0.028);
+
+        osc.connect(gain);
+        gain.connect(this.masterGain);
+        osc.start(now);
+        osc.stop(now + 0.032);
+      }
+
       // Realistic Front-Axle + Rear-Axle Tire Expansion-Joint Thump ("ba-dump") on Cracked Asphalt
       playCrackThump(speedRatio) {
         if (!this.enabled || !this.ctx || this.ctx.state !== 'running') return;
@@ -925,10 +983,11 @@
         const filterCutoff = (360 + rpm * 740 + spd * 140) * throttleLoad * shiftCut;
         this.engineLoadFilter.frequency.setTargetAtTime(filterCutoff, now, 0.03);
 
+        // Engine volume boosted by ~18% for richer presence
         const isDriving = spd > 0.01 || braking;
         const targetEngineGain = isDriving
-          ? (0.14 + rpm * 0.14) * shiftCut * (braking ? 0.80 : 1.0)
-          : 0.065;
+          ? (0.165 + rpm * 0.165) * shiftCut * (braking ? 0.80 : 1.0)
+          : 0.076;
         this.engineGain.gain.setTargetAtTime(targetEngineGain, now, 0.03);
 
         // Trigger occasional overrun exhaust burble when braking from high speed
@@ -1318,6 +1377,9 @@
         this.samples = [];
         this.barriers = [];
         this.obstacles = []; // Trees (solid trunk), Bushes (brushable scrub), Rocks (solid boulder)
+        this.tireMarks = [];
+        this.maxTireMarks = 600; // Bounded FIFO queue: oldest marks are removed once limit is reached
+        this.startSampleIdx = 22;
         this.sectorIndices = [0, 0, 0];
         this.startPose = { x: 0, y: 0, angle: 0 };
         this.stageSeed = 1;
@@ -1326,11 +1388,42 @@
       build(stageIndex) {
         this.stageSeed = stageIndex + 1;
         const stage = STAGES[stageIndex];
-        const pts = stage.points;
+        const basePts = stage.points;
         const rawSamples = [];
         this.samples = [];
         this.barriers = [];
         this.obstacles = [];
+        this.tireMarks = [];
+
+        // Extend the spline at both ends with smooth run-in (paddock staging) and run-out (deceleration straight)
+        // so the track never starts or ends abruptly near the gates
+        const pFirst = basePts[0];
+        const pSecond = basePts[1];
+        const startDirX = pFirst.x - pSecond.x;
+        const startDirY = pFirst.y - pSecond.y;
+        const startLen = Math.hypot(startDirX, startDirY) || 1;
+        const runInPt = {
+          x: Math.max(220, Math.min(this.worldSize - 220, pFirst.x + (startDirX / startLen) * 340)),
+          y: Math.max(220, Math.min(this.worldSize - 220, pFirst.y + (startDirY / startLen) * 340)),
+          w: pFirst.w * 1.08,
+          surface: pFirst.surface,
+          barrier: 'none'
+        };
+
+        const pLast = basePts[basePts.length - 1];
+        const pPrev = basePts[basePts.length - 2];
+        const endDirX = pLast.x - pPrev.x;
+        const endDirY = pLast.y - pPrev.y;
+        const endLen = Math.hypot(endDirX, endDirY) || 1;
+        const runOutPt = {
+          x: Math.max(220, Math.min(this.worldSize - 220, pLast.x + (endDirX / endLen) * 440)),
+          y: Math.max(220, Math.min(this.worldSize - 220, pLast.y + (endDirY / endLen) * 440)),
+          w: pLast.w * 1.08,
+          surface: pLast.surface,
+          barrier: 'none'
+        };
+
+        const pts = [runInPt, ...basePts, runOutPt];
 
         // High-density raw spline evaluation including Catmull-Rom smooth track width interpolation
         const stepsPerSegment = 44;
@@ -1382,7 +1475,7 @@
           }
         }
 
-        // Compute smooth tangents, normals, and left/right edge coordinates
+        // Compute smooth tangents, normals, and initial left/right edge rails
         for (let i = 0; i < this.samples.length; i++) {
           const prev = this.samples[Math.max(0, i - 1)];
           const next = this.samples[Math.min(this.samples.length - 1, i + 1)];
@@ -1491,15 +1584,19 @@
           }
         }
 
-        // Sector indices (S1 at 33%, S2 at 66%, Finish at 97%)
+        // Start Gate sits well after the run-in paddock (~350px in); Finish Gate sits ~520px before the run-out end
+        this.startSampleIdx = 22;
+        const finishSampleIdx = this.samples.length - 33;
+        const activeSpan = finishSampleIdx - this.startSampleIdx;
+
         this.sectorIndices = [
-          Math.floor(this.samples.length * 0.33),
-          Math.floor(this.samples.length * 0.66),
-          this.samples.length - 9
+          this.startSampleIdx + Math.floor(activeSpan * 0.33),
+          this.startSampleIdx + Math.floor(activeSpan * 0.66),
+          finishSampleIdx
         ];
 
         // Start pose
-        const s0 = this.samples[6];
+        const s0 = this.samples[this.startSampleIdx];
         this.startPose = {
           x: s0.x,
           y: s0.y,
@@ -1516,6 +1613,29 @@
           seed = (seed * 49297 + 233280) % 233280;
           return seed / 233280;
         };
+
+        // 0. Place Physical Colliders across the Start & End Wooden Stage Barricades
+        const borderStart = 9;
+        const borderEnd = this.samples.length - 10;
+        for (const termIdx of [borderStart, borderEnd]) {
+          const ts = this.samples[termIdx];
+          if (!ts) continue;
+          const dirSign = termIdx === borderStart ? 1 : -1;
+          const halfSpan = ts.effW * 0.5;
+          // Dense row of collision posts along the wooden barricade rails + timber shoulder posts
+          for (let lat = -halfSpan; lat <= halfSpan; lat += 11) {
+            this.barriers.push({
+              x: ts.mx + ts.ux * lat,
+              y: ts.my + ts.uy * lat,
+              r: 8.5,
+              index: termIdx,
+              side: 0,
+              isTerminus: true,
+              inwardX: ts.tx * dirSign,
+              inwardY: ts.ty * dirSign
+            });
+          }
+        }
 
         // Helper to place roadside bollards cleanly along variable-width edges
         const tryAddBarrier = (bx, by, sampleIdx, side) => {
@@ -1582,7 +1702,11 @@
           return true;
         };
 
-        // 1. Place Roadside Scrub Bushes & Hedgerows (closer to track edge — brushable obstacles!)
+        const bushVariants = ['gorse_mound', 'hedgerow', 'fern_bracken', 'heather_patch'];
+        const rockVariants = ['angular_crag', 'boulder_cluster', 'layered_slate', 'mossy_outcrop'];
+        const treeVariants = ['alpine_spruce', 'deciduous_oak', 'cypress_cluster', 'twin_pine'];
+
+        // 1. Place Varied Roadside Scrub Bushes, Brambles, Ferns & Hedgerows (brushable obstacles)
         for (let i = 0; i < 290; i++) {
           const sampleIdx = Math.floor(rand() * this.samples.length);
           const s = this.samples[sampleIdx];
@@ -1590,23 +1714,26 @@
           const distFromCenter = s.w * 0.5 + 24 + rand() * 95;
           const bx = s.x + s.nx * side * distFromCenter + (rand() - 0.5) * 28;
           const by = s.y + s.ny * side * distFromCenter + (rand() - 0.5) * 28;
-          const radius = 12 + rand() * 11;
+          const radius = 12 + rand() * 12;
+          const variant = bushVariants[Math.floor(rand() * bushVariants.length)];
 
           if (isSafeFromTrack(bx, by, radius + 9)) {
             this.obstacles.push({
               type: 'bush',
+              variant,
               x: bx,
               y: by,
               r: radius,
               collideR: radius * 0.78,
-              seed: Math.floor(rand() * 1000),
-              hasFlowers: rand() > 0.62,
+              seed: Math.floor(rand() * 10000),
+              angle: Math.atan2(s.ty, s.tx) + (rand() - 0.5) * 0.8,
+              hasFlowers: rand() > 0.52,
               rustleCooldown: 0
             });
           }
         }
 
-        // 2. Place Faceted Alpine Boulders / Rock Outcrops
+        // 2. Place Varied Alpine Boulders, Crags, Slate Outcrops & Talus Clusters
         for (let i = 0; i < 95; i++) {
           const sampleIdx = Math.floor(rand() * this.samples.length);
           const s = this.samples[sampleIdx];
@@ -1614,22 +1741,25 @@
           const distFromCenter = s.w * 0.5 + 34 + rand() * 170;
           const rx = s.x + s.nx * side * distFromCenter + (rand() - 0.5) * 35;
           const ry = s.y + s.ny * side * distFromCenter + (rand() - 0.5) * 35;
-          const radius = 14 + rand() * 15;
+          const radius = 14 + rand() * 16;
+          const variant = rockVariants[Math.floor(rand() * rockVariants.length)];
 
           if (isSafeFromTrack(rx, ry, radius + 16)) {
             this.obstacles.push({
               type: 'rock',
+              variant,
               x: rx,
               y: ry,
               r: radius,
               collideR: radius * 0.82,
-              seed: Math.floor(rand() * 1000),
-              angle: rand() * Math.PI * 2
+              seed: Math.floor(rand() * 10000),
+              angle: rand() * Math.PI * 2,
+              stretch: 0.78 + rand() * 0.45
             });
           }
         }
 
-        // 3. Place Multi-Tiered Conifer Pine Trees (with solid trunk collisions)
+        // 3. Place Varied Trees (Alpine Spruce, Broadleaf Deciduous Oak, Tuscan Cypress Clusters & Twin Pines)
         for (let i = 0; i < 460; i++) {
           const sampleIdx = Math.floor(rand() * this.samples.length);
           const s = this.samples[sampleIdx];
@@ -1638,16 +1768,19 @@
           const tx = s.x + s.nx * side * distFromCenter + (rand() - 0.5) * 45;
           const ty = s.y + s.ny * side * distFromCenter + (rand() - 0.5) * 45;
           const radius = 20 + rand() * 22;
+          const variant = treeVariants[Math.floor(rand() * treeVariants.length)];
 
           if (isSafeFromTrack(tx, ty, radius + 18)) {
             this.obstacles.push({
               type: 'tree',
+              variant,
               x: tx,
               y: ty,
               r: radius,
-              collideR: radius * 0.42, // Solid wooden trunk radius
-              seed: Math.floor(rand() * 1000),
-              angle: rand() * Math.PI * 2
+              collideR: Math.max(8, radius * 0.34),
+              seed: Math.floor(rand() * 10000),
+              angle: rand() * Math.PI * 2,
+              autumnTint: rand() > 0.72
             });
           }
         }
@@ -1656,16 +1789,18 @@
       bakeCanvas() {
         const ctx = this.ctx;
         const W = this.worldSize;
-        // Transparent background so the infinite procedural topographic map underneath shows through seamlessly!
         ctx.clearRect(0, 0, W, W);
 
-        // Helper to map lateral fraction u (-0.5 = right edge, 0 = center, +0.5 = left edge) without corner pinching
-        const ptAt = (s, u, extraPx = 0) => ({
-          x: s.mx + s.cx * u + s.ux * extraPx,
-          y: s.my + s.cy * u + s.uy * extraPx
-        });
+        // Helper to compute a pinch-free point across the smoothed track cross-section
+        const ptAt = (s, u, extraPx = 0) => {
+          const offset = u * s.effW + extraPx;
+          return {
+            x: s.mx + s.ux * offset,
+            y: s.my + s.uy * offset
+          };
+        };
 
-        // Opaque quad helper: uses matching stroke + fill with zero overlap padding so semi-transparent seams/bands never appear
+        // Helper to fill opaque quads without semi-transparent seams
         const fillOpaqueQuad = (s1, s2, uMin, uMax, color, extraMin = 0, extraMax = 0) => {
           const p1L = ptAt(s1, uMax, extraMax);
           const p2L = ptAt(s2, uMax, extraMax);
@@ -1693,42 +1828,67 @@
           return ((n ^ (n >>> 16)) >>> 0) / 4294967296;
         };
 
-        // 1. Continuous Single-Path Earth Shoulder Verge (Zero internal quad seams)
+        const fadeLen = 14;
+        const totalSamples = this.samples.length;
+        const paperRGB = [234, 228, 220];
+
+        // Helper to blend track RGB into the paper map color at the very ends of the run-in / run-out
+        const getEndFadedRGB = (idx, baseRGB) => {
+          let t = 1.0;
+          if (idx < fadeLen) {
+            t = idx / fadeLen;
+          } else if (idx > totalSamples - 1 - fadeLen) {
+            t = (totalSamples - 1 - idx) / fadeLen;
+          }
+          if (t >= 1.0) return baseRGB;
+          const smooth = t * t * (3 - 2 * t);
+          return [
+            Math.round(paperRGB[0] + (baseRGB[0] - paperRGB[0]) * smooth),
+            Math.round(paperRGB[1] + (baseRGB[1] - paperRGB[1]) * smooth),
+            Math.round(paperRGB[2] + (baseRGB[2] - paperRGB[2]) * smooth)
+          ];
+        };
+
+        // 1. Continuous Single-Path Earth Shoulder Verge (tapers inward at both ends, zero circles)
         ctx.fillStyle = PALETTE.paperDeep;
         ctx.beginPath();
-        for (let i = 0; i < this.samples.length; i++) {
-          const p = ptAt(this.samples[i], 0.5, 16);
-          if (i === 0) ctx.moveTo(p.x, p.y);
+        for (let i = 4; i < totalSamples - 4; i++) {
+          const endFactor = Math.min(1, (i - 4) / 10, (totalSamples - 5 - i) / 10);
+          const p = ptAt(this.samples[i], 0.5, 16 * endFactor);
+          if (i === 4) ctx.moveTo(p.x, p.y);
           else ctx.lineTo(p.x, p.y);
         }
-        for (let i = this.samples.length - 1; i >= 0; i--) {
-          const p = ptAt(this.samples[i], -0.5, -16);
+        for (let i = totalSamples - 5; i >= 4; i--) {
+          const endFactor = Math.min(1, (i - 4) / 10, (totalSamples - 5 - i) / 10);
+          const p = ptAt(this.samples[i], -0.5, -16 * endFactor);
           ctx.lineTo(p.x, p.y);
         }
         ctx.closePath();
         ctx.fill();
 
-        // 2. Continuous Single-Path Outer Track Border (Ink Halo)
+        // 2. Continuous Single-Path Outer Track Border (stops cleanly at the barricade ends)
+        const borderStart = 9;
+        const borderEnd = totalSamples - 10;
         ctx.fillStyle = PALETTE.asphaltEdge;
         ctx.beginPath();
-        for (let i = 0; i < this.samples.length; i++) {
+        for (let i = borderStart; i <= borderEnd; i++) {
           const p = ptAt(this.samples[i], 0.5, 5);
-          if (i === 0) ctx.moveTo(p.x, p.y);
+          if (i === borderStart) ctx.moveTo(p.x, p.y);
           else ctx.lineTo(p.x, p.y);
         }
-        for (let i = this.samples.length - 1; i >= 0; i--) {
+        for (let i = borderEnd; i >= borderStart; i--) {
           const p = ptAt(this.samples[i], -0.5, -5);
           ctx.lineTo(p.x, p.y);
         }
         ctx.closePath();
         ctx.fill();
 
-        // 3. Seamless Curve-Following Base Track Ribbon (Hardware LinearGradient per transition quad so zero seams or steps can exist)
-        for (let i = 0; i < this.samples.length - 1; i++) {
+        // 3. Seamless Curve-Following Base Track Ribbon (Fades straight into the map at both ends)
+        for (let i = 0; i < totalSamples - 1; i++) {
           const s1 = this.samples[i];
           const s2 = this.samples[i + 1];
-          const c1 = rgbToCss(s1.rgb);
-          const c2 = rgbToCss(s2.rgb);
+          const c1 = rgbToCss(getEndFadedRGB(i, s1.rgb));
+          const c2 = rgbToCss(getEndFadedRGB(i + 1, s2.rgb));
 
           if (c1 === c2) {
             fillOpaqueQuad(s1, s2, -0.5, 0.5, c1);
@@ -1747,7 +1907,7 @@
 
         // 4A. Feathered Painted White/Cream Edge Stripes on Smooth Tarmac Sections (Naturally wears away into transitions)
         for (const side of [-0.44, 0.44]) {
-          for (let i = 0; i < this.samples.length - 1; i++) {
+          for (let i = borderStart; i < borderEnd; i++) {
             const s1 = this.samples[i];
             const s2 = this.samples[i + 1];
             const wTar = (s1.weights.tarmac + s2.weights.tarmac) * 0.5;
@@ -1770,7 +1930,7 @@
         }
 
         // 4B. Detailed Non-Banded Surface Textures for All 4 Surfaces
-        for (let i = 2; i < this.samples.length - 2; i++) {
+        for (let i = 6; i < totalSamples - 6; i++) {
           const s = this.samples[i];
           const next = this.samples[i + 1];
           const w = s.weights;
@@ -1995,15 +2155,19 @@
           }
         }
 
+        // 4C. Straight Perpendicular Stage-End Barricades (No circular caps)
+        this.drawTrackTerminus(ctx, this.samples[borderStart], -1);
+        this.drawTrackTerminus(ctx, this.samples[borderEnd], 1);
+
         // 5. Sector & Start/Finish Gate Lines
-        this.drawGateLine(6, PALETTE.cream, 'START');
+        this.drawGateLine(this.startSampleIdx, PALETTE.cream, 'START');
         this.drawGateLine(this.sectorIndices[0], PALETTE.terracotta, 'S1');
         this.drawGateLine(this.sectorIndices[1], PALETTE.terracotta, 'S2');
         this.drawGateLine(this.sectorIndices[2], PALETTE.cream, 'FINISH', true);
-
-        // 6. Terracotta & Cream Roadside Bollards
+        // 6. Terracotta & Cream Roadside Bollards (Skip invisible terminus collision markers since wooden rails are drawn)
         for (let i = 0; i < this.barriers.length; i++) {
           const b = this.barriers[i];
+          if (b.isTerminus) continue;
           ctx.fillStyle = PALETTE.ink;
           ctx.beginPath();
           ctx.arc(b.x + 2, b.y + 2, b.r, 0, Math.PI * 2);
@@ -2198,147 +2362,408 @@
       }
 
       drawBush(ctx, bush) {
-        const { x, y, r, seed, hasFlowers } = bush;
-        const lobes = 5;
-        // Drop shadow
-        ctx.fillStyle = PALETTE.pineShadow;
-        ctx.beginPath();
-        for (let i = 0; i < lobes; i++) {
-          const ang = (i / lobes) * Math.PI * 2 + seed * 0.1;
-          const dist = r * 0.42;
-          const lr = r * (0.58 + ((seed + i * 19) % 10) * 0.02);
-          ctx.moveTo(x + 3.5 + Math.cos(ang) * dist + lr, y + 3.5 + Math.sin(ang) * dist);
-          ctx.arc(x + 3.5 + Math.cos(ang) * dist, y + 3.5 + Math.sin(ang) * dist, lr, 0, Math.PI * 2);
-        }
-        ctx.fill();
+        const { x, y, r, seed, hasFlowers, variant = 'gorse_mound', angle = 0 } = bush;
+        ctx.save();
+        ctx.translate(x, y);
 
-        // Outer foliage lobes
-        ctx.fillStyle = PALETTE.bush;
-        ctx.strokeStyle = PALETTE.ink;
-        ctx.lineWidth = 1.6;
-        for (let i = 0; i < lobes; i++) {
-          const ang = (i / lobes) * Math.PI * 2 + seed * 0.1;
-          const dist = r * 0.40;
-          const lr = r * (0.56 + ((seed + i * 19) % 10) * 0.02);
+        if (variant === 'hedgerow') {
+          // Elongated roadside bramble hedgerow oriented with the road tangent
+          ctx.rotate(angle);
+          const clumps = 4;
+          const span = r * 1.45;
+          for (let c = 0; c < clumps; c++) {
+            const cx = (c / (clumps - 1) - 0.5) * span;
+            const cy = (((seed + c * 31) % 10) - 5) * 0.9;
+            const cr = r * (0.52 + ((seed + c * 17) % 10) * 0.02);
+            ctx.fillStyle = PALETTE.pineShadow;
+            ctx.beginPath();
+            ctx.arc(cx + 3, cy + 3, cr, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          for (let c = 0; c < clumps; c++) {
+            const cx = (c / (clumps - 1) - 0.5) * span;
+            const cy = (((seed + c * 31) % 10) - 5) * 0.9;
+            const cr = r * (0.52 + ((seed + c * 17) % 10) * 0.02);
+            ctx.fillStyle = c % 2 === 0 ? PALETTE.bush : PALETTE.bushDark;
+            ctx.strokeStyle = PALETTE.ink;
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.arc(cx, cy, cr, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = PALETTE.pineLight;
+            ctx.beginPath();
+            ctx.arc(cx - cr * 0.22, cy - cr * 0.22, cr * 0.45, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        } else if (variant === 'fern_bracken') {
+          // Radiating spiky mountain fern / juniper fronds
+          const fronds = 7 + (seed % 3);
+          ctx.fillStyle = PALETTE.pineShadow;
           ctx.beginPath();
-          ctx.arc(x + Math.cos(ang) * dist, y + Math.sin(ang) * dist, lr, 0, Math.PI * 2);
+          ctx.arc(3, 3, r * 0.72, 0, Math.PI * 2);
           ctx.fill();
-          ctx.stroke();
-        }
 
-        // Inner highlight cluster
-        ctx.fillStyle = PALETTE.pineLight;
-        ctx.beginPath();
-        ctx.arc(x - r * 0.12, y - r * 0.12, r * 0.48, 0, Math.PI * 2);
-        ctx.fill();
+          for (let f = 0; f < fronds; f++) {
+            const fang = (f / fronds) * Math.PI * 2 + (seed % 10) * 0.1;
+            const flen = r * (0.85 + ((seed + f * 23) % 10) * 0.03);
+            const fw = r * 0.28;
+            ctx.save();
+            ctx.rotate(fang);
+            ctx.fillStyle = f % 2 === 0 ? PALETTE.bush : PALETTE.pineLight;
+            ctx.strokeStyle = PALETTE.ink;
+            ctx.lineWidth = 1.4;
+            ctx.beginPath();
+            ctx.moveTo(0, -fw * 0.5);
+            ctx.quadraticCurveTo(flen * 0.55, -fw, flen, 0);
+            ctx.quadraticCurveTo(flen * 0.55, fw, 0, fw * 0.5);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+            ctx.restore();
+          }
+        } else if (variant === 'heather_patch') {
+          // Sprawling low alpine heather & wildflower mat
+          const puffs = 6;
+          for (let i = 0; i < puffs; i++) {
+            const ang = (i / puffs) * Math.PI * 2 + seed * 0.2;
+            const dist = r * (0.25 + ((seed + i * 13) % 10) * 0.035);
+            const pr = r * (0.42 + ((seed + i * 29) % 10) * 0.02);
+            ctx.fillStyle = i % 2 === 0 ? '#4B6043' : '#657853';
+            ctx.strokeStyle = PALETTE.ink;
+            ctx.lineWidth = 1.4;
+            ctx.beginPath();
+            ctx.ellipse(Math.cos(ang) * dist, Math.sin(ang) * dist, pr * 1.15, pr * 0.85, ang, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+          }
+          // Dense wildflower / heather speckles
+          for (let f = 0; f < 6; f++) {
+            const fang = seed + f * 1.1;
+            const fdist = ((seed + f * 19) % 10) * 0.065 * r;
+            ctx.fillStyle = f % 2 === 0 ? PALETTE.terracotta : PALETTE.cream;
+            ctx.fillRect(Math.cos(fang) * fdist - 1.5, Math.sin(fang) * fdist - 1.5, 3, 3);
+          }
+        } else {
+          // Classic multi-lobe gorse mound with asymmetrical organic lobes
+          const lobes = 5 + (seed % 3);
+          ctx.fillStyle = PALETTE.pineShadow;
+          ctx.beginPath();
+          for (let i = 0; i < lobes; i++) {
+            const ang = (i / lobes) * Math.PI * 2 + seed * 0.1;
+            const dist = r * (0.36 + ((seed + i * 11) % 8) * 0.02);
+            const lr = r * (0.50 + ((seed + i * 19) % 10) * 0.025);
+            ctx.moveTo(3.5 + Math.cos(ang) * dist + lr, 3.5 + Math.sin(ang) * dist);
+            ctx.arc(3.5 + Math.cos(ang) * dist, 3.5 + Math.sin(ang) * dist, lr, 0, Math.PI * 2);
+          }
+          ctx.fill();
 
-        // Optional terracotta/gold gorse blossoms
-        if (hasFlowers) {
-          ctx.fillStyle = seed % 2 === 0 ? PALETTE.gold : PALETTE.terracotta;
-          for (let f = 0; f < 3; f++) {
-            const fang = seed + f * 2.1;
-            const fx = x + Math.cos(fang) * (r * 0.35);
-            const fy = y + Math.sin(fang) * (r * 0.35);
-            ctx.fillRect(fx - 1.5, fy - 1.5, 3, 3);
+          ctx.fillStyle = PALETTE.bush;
+          ctx.strokeStyle = PALETTE.ink;
+          ctx.lineWidth = 1.6;
+          for (let i = 0; i < lobes; i++) {
+            const ang = (i / lobes) * Math.PI * 2 + seed * 0.1;
+            const dist = r * (0.36 + ((seed + i * 11) % 8) * 0.02);
+            const lr = r * (0.50 + ((seed + i * 19) % 10) * 0.025);
+            ctx.beginPath();
+            ctx.arc(Math.cos(ang) * dist, Math.sin(ang) * dist, lr, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+          }
+
+          ctx.fillStyle = PALETTE.pineLight;
+          ctx.beginPath();
+          ctx.arc(-r * 0.14, -r * 0.14, r * 0.46, 0, Math.PI * 2);
+          ctx.fill();
+
+          if (hasFlowers) {
+            ctx.fillStyle = seed % 2 === 0 ? PALETTE.gold : PALETTE.terracotta;
+            for (let f = 0; f < 4; f++) {
+              const fang = seed + f * 1.7;
+              const fx = Math.cos(fang) * (r * 0.38);
+              const fy = Math.sin(fang) * (r * 0.38);
+              ctx.fillRect(fx - 1.6, fy - 1.6, 3.2, 3.2);
+            }
           }
         }
+
+        ctx.restore();
       }
 
       drawRock(ctx, rock) {
-        const { x, y, r, seed, angle } = rock;
+        const { x, y, r, seed, angle, variant = 'angular_crag', stretch = 1.0 } = rock;
         ctx.save();
         ctx.translate(x, y);
         ctx.rotate(angle);
 
-        const sides = 7;
-        const pts = [];
-        for (let i = 0; i < sides; i++) {
-          const a = (i / sides) * Math.PI * 2;
-          const rad = r * (0.72 + ((seed + i * 31) % 10) * 0.035);
-          pts.push({ x: Math.cos(a) * rad, y: Math.sin(a) * rad });
+        const buildPoly = (radX, radY, sides, seedOffset) => {
+          const pts = [];
+          for (let i = 0; i < sides; i++) {
+            const a = (i / sides) * Math.PI * 2 + (((seed + i * 17 + seedOffset) % 10) - 5) * 0.04;
+            const jitter = 0.68 + ((seed + i * 31 + seedOffset) % 12) * 0.035;
+            pts.push({
+              x: Math.cos(a) * radX * jitter,
+              y: Math.sin(a) * radY * jitter
+            });
+          }
+          return pts;
+        };
+
+        const drawFacetedStone = (ox, oy, rx, ry, sides, sOff, baseTone, lightTone, darkTone) => {
+          const pts = buildPoly(rx, ry, sides, sOff);
+          ctx.fillStyle = PALETTE.ink;
+          ctx.beginPath();
+          ctx.moveTo(ox + pts[0].x + 3.5, oy + pts[0].y + 3.5);
+          for (let i = 1; i < pts.length; i++) ctx.lineTo(ox + pts[i].x + 3.5, oy + pts[i].y + 3.5);
+          ctx.closePath();
+          ctx.fill();
+
+          ctx.fillStyle = baseTone;
+          ctx.strokeStyle = PALETTE.ink;
+          ctx.lineWidth = 1.8;
+          ctx.beginPath();
+          ctx.moveTo(ox + pts[0].x, oy + pts[0].y);
+          for (let i = 1; i < pts.length; i++) ctx.lineTo(ox + pts[i].x, oy + pts[i].y);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+
+          // Off-center ridge peak for 3D geological facets
+          const peakX = ox - rx * 0.15;
+          const peakY = oy - ry * 0.15;
+
+          // Sunlit upper-left facet
+          ctx.fillStyle = lightTone;
+          ctx.beginPath();
+          ctx.moveTo(peakX, peakY);
+          ctx.lineTo(ox + pts[Math.floor(sides * 0.5)].x, oy + pts[Math.floor(sides * 0.5)].y);
+          ctx.lineTo(ox + pts[Math.floor(sides * 0.68)].x, oy + pts[Math.floor(sides * 0.68)].y);
+          ctx.lineTo(ox + pts[Math.floor(sides * 0.85)].x, oy + pts[Math.floor(sides * 0.85)].y);
+          ctx.closePath();
+          ctx.fill();
+
+          // Shaded lower-right cliff face
+          ctx.fillStyle = darkTone;
+          ctx.beginPath();
+          ctx.moveTo(peakX, peakY);
+          ctx.lineTo(ox + pts[0].x, oy + pts[0].y);
+          ctx.lineTo(ox + pts[1].x, oy + pts[1].y);
+          ctx.lineTo(ox + pts[2].x, oy + pts[2].y);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+        };
+
+        if (variant === 'boulder_cluster') {
+          // Main boulder + 2 satellite talus rocks
+          drawFacetedStone(-r * 0.15, -r * 0.1, r * 0.88, r * 0.78, 7, 0, PALETTE.rock, '#A69F95', PALETTE.rockDark);
+          drawFacetedStone(r * 0.58, r * 0.38, r * 0.46, r * 0.40, 6, 19, '#7D766D', '#9B948A', '#524D46');
+          drawFacetedStone(-r * 0.52, r * 0.48, r * 0.36, r * 0.32, 5, 37, '#968F85', '#B2ABA0', PALETTE.rockDark);
+        } else if (variant === 'layered_slate') {
+          // Stratified sedimentary / limestone terraces
+          drawFacetedStone(0, 0, r * 1.12, r * 0.76, 8, 5, '#7A746C', '#989188', '#4F4B45');
+          drawFacetedStone(-r * 0.08, -r * 0.08, r * 0.76, r * 0.50, 7, 21, '#948D83', '#B0A99E', '#635E56');
+          drawFacetedStone(-r * 0.14, -r * 0.14, r * 0.42, r * 0.28, 6, 43, '#ABA398', '#C4BCB0', '#7A746C');
+        } else if (variant === 'mossy_outcrop') {
+          // Weathered granite boulder with alpine moss patches
+          drawFacetedStone(0, 0, r * stretch, r / stretch, 8, 11, PALETTE.rock, '#A39C92', PALETTE.rockDark);
+          ctx.fillStyle = PALETTE.bush;
+          ctx.strokeStyle = PALETTE.ink;
+          ctx.lineWidth = 1.2;
+          ctx.beginPath();
+          ctx.arc(-r * 0.22, r * 0.18, r * 0.34, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+          ctx.fillStyle = PALETTE.pineLight;
+          ctx.beginPath();
+          ctx.arc(r * 0.18, -r * 0.24, r * 0.24, 0, Math.PI * 2);
+          ctx.fill();
+        } else {
+          // Angular alpine crag with varied aspect ratio
+          const sides = 6 + (seed % 4);
+          drawFacetedStone(0, 0, r * stretch, r * (1.85 - stretch) * 0.85, sides, 0, PALETTE.rock, '#A8A096', PALETTE.rockDark);
         }
-
-        // Hard shadow
-        ctx.fillStyle = PALETTE.ink;
-        ctx.beginPath();
-        ctx.moveTo(pts[0].x + 4, pts[0].y + 4);
-        for (let i = 1; i < sides; i++) ctx.lineTo(pts[i].x + 4, pts[i].y + 4);
-        ctx.closePath();
-        ctx.fill();
-
-        // Main rock polygon
-        ctx.fillStyle = PALETTE.rock;
-        ctx.strokeStyle = PALETTE.ink;
-        ctx.lineWidth = 1.8;
-        ctx.beginPath();
-        ctx.moveTo(pts[0].x, pts[0].y);
-        for (let i = 1; i < sides; i++) ctx.lineTo(pts[i].x, pts[i].y);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
-
-        // Dark facet shading on lower-right half
-        ctx.fillStyle = PALETTE.rockDark;
-        ctx.beginPath();
-        ctx.moveTo(0, 0);
-        ctx.lineTo(pts[1].x, pts[1].y);
-        ctx.lineTo(pts[2].x, pts[2].y);
-        ctx.lineTo(pts[3].x, pts[3].y);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
 
         ctx.restore();
       }
 
       drawPineTree(ctx, tree) {
-        const { x, y, r, seed, angle } = tree;
+        const { x, y, r, seed, angle, variant = 'alpine_spruce', autumnTint = false } = tree;
         ctx.save();
         ctx.translate(x, y);
 
-        // 1. Offset canopy ground shadow
-        ctx.fillStyle = PALETTE.pineShadow;
-        ctx.beginPath();
-        ctx.arc(6.5, 6.5, r * 0.92, 0, Math.PI * 2);
-        ctx.fill();
-
-        // 2. Three-tier notched conifer starburst layers (outer dark pine -> mid pine -> crown highlight)
-        const tiers = [
-          { scale: 1.0, color: PALETTE.pineShadow, points: 12, rot: angle },
-          { scale: 0.84, color: PALETTE.pine, points: 10, rot: angle + 0.3 },
-          { scale: 0.54, color: PALETTE.pineLight, points: 8, rot: angle + 0.65 }
-        ];
-
-        for (let t = 0; t < tiers.length; t++) {
-          const tier = tiers[t];
-          const outerR = r * tier.scale;
-          const innerR = outerR * 0.72;
-          const totalVerts = tier.points * 2;
-
-          ctx.fillStyle = tier.color;
-          ctx.strokeStyle = PALETTE.ink;
-          ctx.lineWidth = t === 0 ? 1.8 : 1.3;
+        const drawConiferCrown = (ox, oy, rad, rot, tierCount, baseCol, midCol, topCol) => {
+          ctx.fillStyle = PALETTE.pineShadow;
           ctx.beginPath();
-          for (let i = 0; i < totalVerts; i++) {
-            const a = tier.rot + (i / totalVerts) * Math.PI * 2;
-            const jitter = 0.94 + ((seed + i * 17 + t * 23) % 10) * 0.012;
-            const rad = (i % 2 === 0 ? outerR : innerR) * jitter;
-            const vx = Math.cos(a) * rad;
-            const vy = Math.sin(a) * rad;
-            if (i === 0) ctx.moveTo(vx, vy);
-            else ctx.lineTo(vx, vy);
-          }
-          ctx.closePath();
+          ctx.arc(ox + 6, oy + 6, rad * 0.90, 0, Math.PI * 2);
           ctx.fill();
-          ctx.stroke();
+
+          const tiers = [
+            { scale: 1.0, color: baseCol, points: 9 + (seed % 5), rot },
+            { scale: 0.78, color: midCol, points: 8 + (seed % 4), rot: rot + 0.35 },
+            { scale: 0.50, color: topCol, points: 6 + (seed % 3), rot: rot + 0.72 }
+          ];
+
+          for (let t = 0; t < tierCount; t++) {
+            const tier = tiers[t];
+            const outerR = rad * tier.scale;
+            const innerR = outerR * (0.64 + ((seed + t * 13) % 6) * 0.025);
+            const totalVerts = tier.points * 2;
+
+            ctx.fillStyle = tier.color;
+            ctx.strokeStyle = PALETTE.ink;
+            ctx.lineWidth = t === 0 ? 1.8 : 1.3;
+            ctx.beginPath();
+            for (let i = 0; i < totalVerts; i++) {
+              const a = tier.rot + (i / totalVerts) * Math.PI * 2;
+              const asym = 0.86 + ((seed + i * 19 + t * 29) % 12) * 0.024;
+              const branchR = (i % 2 === 0 ? outerR : innerR) * asym;
+              const vx = ox + Math.cos(a) * branchR;
+              const vy = oy + Math.sin(a) * branchR;
+              if (i === 0) ctx.moveTo(vx, vy);
+              else ctx.lineTo(vx, vy);
+            }
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+          }
+
+          ctx.fillStyle = '#4A3525';
+          ctx.beginPath();
+          ctx.arc(ox, oy, 2.3, 0, Math.PI * 2);
+          ctx.fill();
+        };
+
+        if (variant === 'deciduous_oak') {
+          // Broadleaf Alpine Beech / Oak with multi-bough billowy canopy (in sage-olive or autumn ochre/terracotta)
+          const boughs = 5 + (seed % 3);
+          const shadowCol = PALETTE.pineShadow;
+          const mainCol = autumnTint ? '#9E5B36' : '#466344';
+          const midCol = autumnTint ? '#C87D3B' : '#587A53';
+          const highCol = autumnTint ? '#DF9E4C' : '#6F9467';
+
+          // Ground shadow
+          ctx.fillStyle = shadowCol;
+          for (let b = 0; b < boughs; b++) {
+            const a = angle + (b / boughs) * Math.PI * 2;
+            const dist = r * 0.36;
+            const br = r * (0.54 + ((seed + b * 17) % 10) * 0.02);
+            ctx.beginPath();
+            ctx.arc(6 + Math.cos(a) * dist, 6 + Math.sin(a) * dist, br, 0, Math.PI * 2);
+            ctx.fill();
+          }
+
+          // Outer leafy boughs
+          for (let b = 0; b < boughs; b++) {
+            const a = angle + (b / boughs) * Math.PI * 2;
+            const dist = r * (0.34 + ((seed + b * 23) % 8) * 0.02);
+            const br = r * (0.52 + ((seed + b * 17) % 10) * 0.02);
+            ctx.fillStyle = b % 2 === 0 ? mainCol : midCol;
+            ctx.strokeStyle = PALETTE.ink;
+            ctx.lineWidth = 1.7;
+            ctx.beginPath();
+            ctx.arc(Math.cos(a) * dist, Math.sin(a) * dist, br, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+          }
+
+          // Visible timber branches radiating from center trunk
+          ctx.strokeStyle = '#3D2B1F';
+          ctx.lineWidth = 2.0;
+          for (let b = 0; b < 3; b++) {
+            const ba = angle + b * 2.1;
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(Math.cos(ba) * r * 0.32, Math.sin(ba) * r * 0.32);
+            ctx.stroke();
+          }
+
+          // Upper sunlit crown puffs
+          for (let c = 0; c < 3; c++) {
+            const ca = angle + c * 2.09 + 0.5;
+            const cdist = r * 0.22;
+            ctx.fillStyle = highCol;
+            ctx.strokeStyle = PALETTE.ink;
+            ctx.lineWidth = 1.2;
+            ctx.beginPath();
+            ctx.arc(Math.cos(ca) * cdist - 1.5, Math.sin(ca) * cdist - 1.5, r * 0.36, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+          }
+        } else if (variant === 'cypress_cluster') {
+          // Trio of tight Mediterranean / Tuscan columnar cypress spires
+          const spires = [
+            { dx: -r * 0.32, dy: r * 0.18, sr: r * 0.54 },
+            { dx: r * 0.34, dy: r * 0.12, sr: r * 0.48 },
+            { dx: 0, dy: -r * 0.16, sr: r * 0.66 }
+          ];
+          for (const sp of spires) {
+            drawConiferCrown(sp.dx, sp.dy, sp.sr, angle + sp.dx * 0.1, 3, '#213626', '#2F4D36', '#446B4C');
+          }
+        } else if (variant === 'twin_pine') {
+          // Dominant alpine pine paired with an asymmetrical side sapling
+          const sideAng = angle + 0.9;
+          const sx = Math.cos(sideAng) * r * 0.58;
+          const sy = Math.sin(sideAng) * r * 0.58;
+          drawConiferCrown(0, 0, r * 0.92, angle, 3, PALETTE.pineShadow, PALETTE.pine, PALETTE.pineLight);
+          drawConiferCrown(sx, sy, r * 0.52, angle + 0.5, 2, PALETTE.pineShadow, PALETTE.pine, PALETTE.pineLight);
+        } else {
+          // Classic multi-tiered Alpine Spruce with organic branch asymmetry
+          const darkTone = (seed % 3 === 0) ? '#1F3323' : PALETTE.pineShadow;
+          const midTone = (seed % 3 === 0) ? '#325238' : PALETTE.pine;
+          const lightTone = (seed % 3 === 0) ? '#48704F' : PALETTE.pineLight;
+          drawConiferCrown(0, 0, r, angle, 3, darkTone, midTone, lightTone);
         }
 
-        // Center trunk pip
-        ctx.fillStyle = PALETTE.ink;
-        ctx.beginPath();
-        ctx.arc(0, 0, 2.2, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.restore();
+      }
 
+      drawTrackTerminus(ctx, s, dirSign) {
+        if (!s) return;
+        const half = s.effW * 0.5;
+        const x1 = s.mx + s.ux * half;
+        const y1 = s.my + s.uy * half;
+        const x2 = s.mx - s.ux * half;
+        const y2 = s.my - s.uy * half;
+
+        ctx.save();
+        // Straight wooden rally barricade rail across the stage end
+        ctx.strokeStyle = PALETTE.ink;
+        ctx.lineWidth = 8;
+        ctx.lineCap = 'butt';
+        ctx.beginPath();
+        ctx.moveTo(x1 + 2, y1 + 2);
+        ctx.lineTo(x2 + 2, y2 + 2);
+        ctx.stroke();
+
+        ctx.strokeStyle = PALETTE.cream;
+        ctx.lineWidth = 6;
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+
+        ctx.strokeStyle = PALETTE.terracotta;
+        ctx.lineWidth = 6;
+        ctx.setLineDash([10, 10]);
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Square timber barricade posts along the rail
+        const posts = 4;
+        for (let p = 0; p <= posts; p++) {
+          const t = p / posts;
+          const px = x1 + (x2 - x1) * t - s.tx * dirSign * 3;
+          const py = y1 + (y2 - y1) * t - s.ty * dirSign * 3;
+          ctx.fillStyle = PALETTE.ink;
+          ctx.fillRect(px - 3.5, py - 3.5, 7, 7);
+          ctx.fillStyle = PALETTE.cream;
+          ctx.fillRect(px - 2, py - 2, 4, 4);
+        }
         ctx.restore();
       }
 
@@ -2346,11 +2771,11 @@
         const s = this.samples[sampleIdx];
         if (!s) return;
         const ctx = this.ctx;
-        const half = s.w * 0.5;
-        const x1 = s.x + s.nx * half;
-        const y1 = s.y + s.ny * half;
-        const x2 = s.x - s.nx * half;
-        const y2 = s.y - s.ny * half;
+        const half = s.effW * 0.5;
+        const x1 = s.mx + s.ux * half;
+        const y1 = s.my + s.uy * half;
+        const x2 = s.mx - s.ux * half;
+        const y2 = s.my - s.uy * half;
 
         ctx.save();
         ctx.strokeStyle = color;
@@ -2369,64 +2794,89 @@
           ctx.lineTo(x2, y2);
           ctx.stroke();
         }
-
-        // Gate Pylons on road edges
-        for (const pt of [{ x: x1, y: y1 }, { x: x2, y: y2 }]) {
-          ctx.fillStyle = PALETTE.terracotta;
-          ctx.strokeStyle = PALETTE.ink;
-          ctx.lineWidth = 2;
-          ctx.beginPath();
-          ctx.arc(pt.x, pt.y, 6, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.stroke();
-        }
         ctx.restore();
       }
 
       stampTireMark(x1, y1, x2, y2, surface, alpha) {
-        const ctx = this.ctx;
+        this.tireMarks.push({
+          x1,
+          y1,
+          x2,
+          y2,
+          surface,
+          alpha
+        });
+        while (this.tireMarks.length > this.maxTireMarks) {
+          this.tireMarks.shift();
+        }
+      }
+
+      drawTireMarks(ctx, camX, camY, viewW, viewH) {
+        const len = this.tireMarks.length;
+        if (len === 0) return;
+
+        const halfW = viewW * 0.65;
+        const halfH = viewH * 0.65;
+        const isNearCap = len > this.maxTireMarks * 0.82;
+        const fadeTailCount = 70;
+
         ctx.save();
         ctx.lineCap = 'round';
-        if (surface === 'gravel') {
-          // Wide pale-edged trench carved through loose gravel scree
-          ctx.lineWidth = 6.2;
-          ctx.strokeStyle = `rgba(223, 210, 192, ${Math.min(0.45, alpha * 0.52)})`;
-          ctx.beginPath();
-          ctx.moveTo(x1, y1);
-          ctx.lineTo(x2, y2);
-          ctx.stroke();
 
-          ctx.lineWidth = 3.8;
-          ctx.strokeStyle = `rgba(118, 100, 79, ${Math.min(0.68, alpha * 0.78)})`;
-          ctx.beginPath();
-          ctx.moveTo(x1, y1);
-          ctx.lineTo(x2, y2);
-          ctx.stroke();
-        } else if (surface === 'dirt') {
-          // Deep rich loamy chocolate-umber clay rut
-          ctx.lineWidth = 4.8;
-          ctx.strokeStyle = `rgba(88, 54, 32, ${Math.min(0.72, alpha * 0.80)})`;
-          ctx.beginPath();
-          ctx.moveTo(x1, y1);
-          ctx.lineTo(x2, y2);
-          ctx.stroke();
-        } else if (surface === 'cracked_tarmac') {
-          // Slightly irregular skipping rubber mark over bumpy broken asphalt
-          ctx.lineWidth = 3.4;
-          ctx.strokeStyle = `rgba(24, 23, 21, ${Math.min(0.65, alpha * 0.72)})`;
-          ctx.beginPath();
-          ctx.moveTo(x1, y1);
-          ctx.lineTo(x2, y2);
-          ctx.stroke();
-        } else {
-          // Crisp dark rubber skidmark on smooth tarmac
-          ctx.lineWidth = 3.5;
-          ctx.strokeStyle = `rgba(18, 18, 16, ${Math.min(0.72, alpha * 0.78)})`;
-          ctx.beginPath();
-          ctx.moveTo(x1, y1);
-          ctx.lineTo(x2, y2);
-          ctx.stroke();
+        for (let i = 0; i < len; i++) {
+          const m = this.tireMarks[i];
+          if (
+            Math.abs(m.x1 - camX) > halfW &&
+            Math.abs(m.x2 - camX) > halfW
+          ) continue;
+          if (
+            Math.abs(m.y1 - camY) > halfH &&
+            Math.abs(m.y2 - camY) > halfH
+          ) continue;
+
+          // Smoothly fade the oldest marks right before they get shifted out of the queue
+          const ageFade = (isNearCap && i < fadeTailCount) ? (i / fadeTailCount) : 1.0;
+          const a = m.alpha * ageFade;
+          if (a <= 0.02) continue;
+
+          if (m.surface === 'gravel') {
+            ctx.lineWidth = 6.2;
+            ctx.strokeStyle = `rgba(218, 204, 184, ${Math.min(0.45, a * 0.5).toFixed(3)})`;
+            ctx.beginPath();
+            ctx.moveTo(m.x1, m.y1);
+            ctx.lineTo(m.x2, m.y2);
+            ctx.stroke();
+
+            ctx.lineWidth = 3.8;
+            ctx.strokeStyle = `rgba(110, 94, 74, ${Math.min(0.68, a * 0.78).toFixed(3)})`;
+            ctx.beginPath();
+            ctx.moveTo(m.x1, m.y1);
+            ctx.lineTo(m.x2, m.y2);
+            ctx.stroke();
+          } else if (m.surface === 'dirt' || m.surface === 'offtrack') {
+            ctx.lineWidth = 4.6;
+            ctx.strokeStyle = `rgba(88, 56, 34, ${Math.min(0.68, a * 0.76).toFixed(3)})`;
+            ctx.beginPath();
+            ctx.moveTo(m.x1, m.y1);
+            ctx.lineTo(m.x2, m.y2);
+            ctx.stroke();
+          } else if (m.surface === 'cracked_tarmac') {
+            ctx.lineWidth = 3.6;
+            ctx.strokeStyle = `rgba(22, 21, 19, ${Math.min(0.64, a * 0.72).toFixed(3)})`;
+            ctx.beginPath();
+            ctx.moveTo(m.x1, m.y1);
+            ctx.lineTo(m.x2, m.y2);
+            ctx.stroke();
+          } else {
+            ctx.lineWidth = 3.4;
+            ctx.strokeStyle = `rgba(16, 16, 15, ${Math.min(0.72, a * 0.80).toFixed(3)})`;
+            ctx.beginPath();
+            ctx.moveTo(m.x1, m.y1);
+            ctx.lineTo(m.x2, m.y2);
+            ctx.stroke();
+          }
         }
+
         ctx.restore();
       }
     }
@@ -2436,7 +2886,7 @@
         this.reset(0, 0, 0);
       }
 
-      reset(x, y, angle) {
+      reset(x, y, angle, startIdx = 22) {
         this.x = x;
         this.y = y;
         this.vx = 0;
@@ -2458,8 +2908,8 @@
         this.speed = 0;
         this.gear = 1;
         this.rpm = 0.2;
-        this.closestSampleIdx = 6;
-        this.maxProgressIdx = 6; // Tracks sequential forward progress along the stage
+        this.closestSampleIdx = startIdx;
+        this.maxProgressIdx = startIdx; // Tracks sequential forward progress along the stage
         this.prevRearLeft = null;
         this.prevRearRight = null;
         this.prevFrontLeft = null;
@@ -2507,65 +2957,82 @@
         }
 
         const prevSurface = this.surface;
-        const onRibbon = surfaceDist <= surfaceSample.w * 0.54;
+        const halfTrackW = surfaceSample.w * 0.52;
+        const onRibbon = surfaceDist <= halfTrackW;
         this.surface = onRibbon ? surfaceSample.surface : 'offtrack';
         this.surfaceWeights = onRibbon
           ? surfaceSample.weights
-          : { tarmac: 0, cracked_tarmac: 0, dirt: 0.4, gravel: 0.6 };
+          : { tarmac: 0, cracked_tarmac: 0, dirt: 0.45, gravel: 0.55 };
         this.dirtBlend = onRibbon ? surfaceSample.dirtBlend : 1.0;
 
         if (prevSurface !== this.surface && this.speed > 125 && onRibbon) {
           game.triggerCameraImpulse((Math.random() - 0.5) * 3.0, (Math.random() - 0.5) * 3.0);
         }
 
-        // Compute weighted physical handling properties from the 4 surface profiles
-        let maxSpeed = 265;
-        let engineForce = 330;
-        let brakeDecel = 460;
-        let lateralGrip = 1.35;
-        let gripRelease = 0.50;
-        let pendulumKick = 140;
-        let yawAuthority = 3.85;
-        let yawResponse = 11.5;
-        let baseDrag = 1.15;
-        let driftScrubDrag = 0.35;
-        let maxLateralRatio = 0.85;
-        let slipThreshold = 75;
-        let bumpiness = 0.65;
+        // Compute weighted on-track handling properties first
+        let trackMaxSpeed = 0;
+        let trackEngineForce = 0;
+        let trackBrakeDecel = 0;
+        let trackLateralGrip = 0;
+        let trackGripRelease = 0;
+        let trackPendulumKick = 0;
+        let trackYawAuthority = 0;
+        let trackYawResponse = 0;
+        let trackBaseDrag = 0;
+        let trackDriftScrubDrag = 0;
+        let trackMaxLateralRatio = 0;
+        let trackSlipThreshold = 0;
+        let trackBumpiness = 0;
 
-        if (onRibbon) {
-          maxSpeed = 0;
-          engineForce = 0;
-          brakeDecel = 0;
-          lateralGrip = 0;
-          gripRelease = 0;
-          pendulumKick = 0;
-          yawAuthority = 0;
-          yawResponse = 0;
-          baseDrag = 0;
-          driftScrubDrag = 0;
-          maxLateralRatio = 0;
-          slipThreshold = 0;
-          bumpiness = 0;
-
-          for (const k of SURFACE_KEYS) {
-            const w = this.surfaceWeights[k] || 0;
-            const spec = SURFACE_SPECS[k];
-            maxSpeed += spec.maxSpeed * w;
-            engineForce += spec.engineForce * w;
-            brakeDecel += spec.brakeDecel * w;
-            lateralGrip += spec.lateralGrip * w;
-            gripRelease += spec.gripRelease * w;
-            pendulumKick += spec.pendulumKick * w;
-            yawAuthority += spec.yawAuthority * w;
-            yawResponse += spec.yawResponse * w;
-            baseDrag += spec.baseDrag * w;
-            driftScrubDrag += spec.driftScrubDrag * w;
-            maxLateralRatio += spec.maxLateralRatio * w;
-            slipThreshold += spec.slipThreshold * w;
-            bumpiness += spec.bumpiness * w;
-          }
+        const wSource = surfaceSample.weights;
+        for (const k of SURFACE_KEYS) {
+          const w = wSource[k] || 0;
+          const spec = SURFACE_SPECS[k];
+          trackMaxSpeed += spec.maxSpeed * w;
+          trackEngineForce += spec.engineForce * w;
+          trackBrakeDecel += spec.brakeDecel * w;
+          trackLateralGrip += spec.lateralGrip * w;
+          trackGripRelease += spec.gripRelease * w;
+          trackPendulumKick += spec.pendulumKick * w;
+          trackYawAuthority += spec.yawAuthority * w;
+          trackYawResponse += spec.yawResponse * w;
+          trackBaseDrag += spec.baseDrag * w;
+          trackDriftScrubDrag += spec.driftScrubDrag * w;
+          trackMaxLateralRatio += spec.maxLateralRatio * w;
+          trackSlipThreshold += spec.slipThreshold * w;
+          trackBumpiness += spec.bumpiness * w;
         }
+
+        // Progressive, realistic Off-Track transition (Verge shoulder -> Alpine Turf)
+        // Going off-track sheds excess speed smoothly and cruises at a steady 50–60 KM/H (135–154 internal units)
+        const offTrackDepth = onRibbon ? 0 : Math.min(1, (surfaceDist - halfTrackW) / 40);
+        const offMaxSpeed = 152;       // ~59 KM/H steady top speed off-track
+        const offEngineForce = 335;    // Enough low-end rally torque to maintain 50-60 KM/H through turf
+        const offBrakeDecel = 215;
+        const offLateralGrip = 1.42;
+        const offGripRelease = 0.50;
+        const offPendulumKick = 148;
+        const offYawAuthority = 3.65;
+        const offYawResponse = 10.6;
+        const offBaseDrag = 0.46;      // Balanced turf rolling resistance so speed settles at 50-60 KM/H
+        const offDriftScrubDrag = 0.26;
+        const offMaxLateralRatio = 0.88;
+        const offSlipThreshold = 68;
+        const offBumpiness = 0.65;
+
+        const maxSpeed = trackMaxSpeed * (1 - offTrackDepth) + offMaxSpeed * offTrackDepth;
+        const engineForce = trackEngineForce * (1 - offTrackDepth) + offEngineForce * offTrackDepth;
+        const brakeDecel = trackBrakeDecel * (1 - offTrackDepth) + offBrakeDecel * offTrackDepth;
+        let lateralGrip = trackLateralGrip * (1 - offTrackDepth) + offLateralGrip * offTrackDepth;
+        const gripRelease = trackGripRelease * (1 - offTrackDepth) + offGripRelease * offTrackDepth;
+        const pendulumKick = trackPendulumKick * (1 - offTrackDepth) + offPendulumKick * offTrackDepth;
+        const yawAuthority = trackYawAuthority * (1 - offTrackDepth) + offYawAuthority * offTrackDepth;
+        const yawResponse = trackYawResponse * (1 - offTrackDepth) + offYawResponse * offTrackDepth;
+        const baseDrag = trackBaseDrag * (1 - offTrackDepth) + offBaseDrag * offTrackDepth;
+        const driftScrubDrag = trackDriftScrubDrag * (1 - offTrackDepth) + offDriftScrubDrag * offTrackDepth;
+        const maxLateralRatio = trackMaxLateralRatio * (1 - offTrackDepth) + offMaxLateralRatio * offTrackDepth;
+        const slipThreshold = trackSlipThreshold * (1 - offTrackDepth) + offSlipThreshold * offTrackDepth;
+        const bumpiness = trackBumpiness * (1 - offTrackDepth) + offBumpiness * offTrackDepth;
 
         // 2. Steering & Yaw Rotation (with Cracked Asphalt camber/fissure perturbation)
         const targetSteer = (input.right ? 1 : 0) - (input.left ? 1 : 0);
@@ -2599,35 +3066,47 @@
         let forwardVel = this.vx * cosA + this.vy * sinA;
         let lateralVel = -this.vx * sinA + this.vy * cosA;
 
-        // 4. Auto-Throttle + Pure Braking -> Instant Reverse When Blocked
+        // 4. Auto-Throttle + Realistic Braking -> Complete Stop for 0.5 Seconds -> Reverse Gear
         if (this.braking) {
-          // If blocked by an obstacle or nearly stopped, immediately engage reverse gear so player is never stuck
-          if (forwardVel > 18 && !this.blockedByObstacle) {
-            forwardVel = Math.max(0, forwardVel - brakeDecel * dt);
-            this.reversing = false;
-            this.brakeHoldTimer = 0;
-          } else {
-            this.brakeHoldTimer += dt;
-            if (this.brakeHoldTimer < 0.06 && !this.reversing && !this.blockedByObstacle) {
-              forwardVel = 0;
+          if (!this.reversing) {
+            if (forwardVel > 1.5 && !this.blockedByObstacle) {
+              // Decelerate down toward a full stop (stopping distance depends strongly on surface brakeDecel!)
+              forwardVel = Math.max(0, forwardVel - brakeDecel * dt);
+              this.brakeHoldTimer = 0;
             } else {
-              this.reversing = true;
-              const maxReverseSpeed = -185;
-              const reverseAccel = 360;
-              forwardVel = Math.max(maxReverseSpeed, Math.min(0, forwardVel) - reverseAccel * dt);
+              // Car has reached a complete stop: hold stationary for 0.5 seconds before reversing
+              forwardVel = 0;
+              lateralVel *= Math.max(0, 1 - 14 * dt);
+              this.brakeHoldTimer += dt;
+              if (this.brakeHoldTimer >= 0.5) {
+                this.reversing = true;
+              }
             }
+          } else {
+            // Reversing after the 0.5s stop pause
+            const maxReverseSpeed = -175;
+            const reverseAccel = 310;
+            forwardVel = Math.max(maxReverseSpeed, Math.min(0, forwardVel) - reverseAccel * dt);
           }
         } else {
           this.brakeHoldTimer = 0;
           this.reversing = false;
           if (forwardVel < 0) {
             // Smoothly and continuously accelerate through 0 without clamping so rebounds never stall the car
-            forwardVel += (engineForce + 520) * dt;
-          } else {
+            forwardVel += (engineForce + 480) * dt;
+          } else if (forwardVel < maxSpeed) {
             const speedRatio = Math.min(1, Math.max(0, forwardVel / maxSpeed));
-            const torqueCurve = Math.max(0.22, 1.06 - speedRatio * 0.82);
+            // Keep healthy drive torque up to maxSpeed so off-track maintains 50-60 KM/H even while turning
+            const minTorque = 0.25;
+            const torqueCurve = Math.max(minTorque, 1.06 - speedRatio * (1.06 - minTorque));
             forwardVel += engineForce * torqueCurve * dt;
           }
+        }
+
+        // Progressive turf drag when carrying excess speed off-track so 120+ KM/H bleeds smoothly down to 50-60 KM/H
+        if (offTrackDepth > 0.05 && forwardVel > maxSpeed) {
+          const excessSpeed = forwardVel - maxSpeed;
+          forwardVel -= excessSpeed * (1.18 * offTrackDepth) * dt;
         }
 
         // 5. Slip-Angle Drifting Physics across all 4 Surfaces
@@ -2665,7 +3144,7 @@
         this.y += this.vy * dt;
         this.blockedByObstacle = false;
 
-        // 7A. Roadside Bollard Deflection (Glancing Guardrail Physics — Never Snags or Stops Auto-Accel)
+        // 7A. Roadside Bollard & Start/End Barricade Deflection (Tactile Speed Penalty on Hit + Scrape Drag)
         for (const b of world.barriers) {
           const dx = this.x - b.x;
           const dy = this.y - b.y;
@@ -2680,10 +3159,10 @@
             this.x = b.x + nx * (minDist + 0.8);
             this.y = b.y + ny * (minDist + 0.8);
 
-            // Use the track's inward normal at this barrier post so sliding along a row of bollards never catches a post face head-on
+            // Use the track's inward normal at this barrier post (or barricade normal for start/end barricades)
             const bs = world.samples[b.index] || surfaceSample;
-            const inwardX = -bs.nx * (b.side || 1);
-            const inwardY = -bs.ny * (b.side || 1);
+            const inwardX = b.isTerminus ? b.inwardX : -bs.nx * (b.side || 1);
+            const inwardY = b.isTerminus ? b.inwardY : -bs.ny * (b.side || 1);
             let defX = nx * 0.35 + inwardX * 0.65;
             let defY = ny * 0.35 + inwardY * 0.65;
             const defLen = Math.hypot(defX, defY) || 1;
@@ -2694,13 +3173,12 @@
             if (vn < 0) {
               this.vx -= 1.05 * vn * defX;
               this.vy -= 1.05 * vn * defY;
-              if (!this.braking) {
-                this.vx += defX * 20;
-                this.vy += defY * 20;
-              }
-              this.vx *= 0.92;
-              this.vy *= 0.92;
             }
+
+            // Continuous rubbing friction against bollards
+            const rubPenalty = Math.max(0.84, 1 - 3.6 * dt);
+            this.vx *= rubPenalty;
+            this.vy *= rubPenalty;
 
             if (!this.braking) {
               const headingCross = Math.cos(this.angle) * defY - Math.sin(this.angle) * defX;
@@ -2708,11 +3186,23 @@
               this.angle += nudgeSign * 2.2 * dt;
             }
 
+            // Distinct initial impact speed loss (sheds ~24% to 35% of speed when striking a bollard)
             if ((radialImpactSpeed > 8 || vn < -8 || this.speed > 45) && this.impactCooldown <= 0) {
-              this.impactCooldown = 0.12;
+              this.impactCooldown = 0.14;
               const impactStrength = Math.min(1.0, Math.max(radialImpactSpeed, this.speed * 0.45) / 180);
+              const speedLossFactor = Math.max(0.64, 0.77 - impactStrength * 0.13);
+              this.vx *= speedLossFactor;
+              this.vy *= speedLossFactor;
+
+              // Ensure car keeps a slight roll-away momentum if not braking so it never stalls on a post
+              const postHitSpeed = Math.hypot(this.vx, this.vy);
+              if (!this.braking && postHitSpeed < 36) {
+                this.vx += defX * 26;
+                this.vy += defY * 26;
+              }
+
               audio.playBarrierImpact(impactStrength);
-              game.triggerCameraImpulse(-defX * 3.5, -defY * 3.5);
+              game.triggerCameraImpulse(-defX * 4.2, -defY * 4.2);
             }
           }
         }
@@ -2753,13 +3243,12 @@
               if (vn < 0) {
                 this.vx -= 1.05 * vn * nx;
                 this.vy -= 1.05 * vn * ny;
-                this.vx *= 0.78;
-                this.vy *= 0.78;
+                this.vx *= 0.72;
+                this.vy *= 0.72;
               }
 
-              // If user is holding brake/reverse while against a tree or rock, give an immediate reverse push away from the trunk
-              if (this.braking) {
-                this.reversing = true;
+              // Once the 0.8s stop timer has elapsed and reverse is engaged, help push away from the trunk/boulder
+              if (this.braking && this.reversing) {
                 const backSpeed = Math.max(95, Math.hypot(this.vx, this.vy));
                 this.vx = -cosA * backSpeed + nx * 25;
                 this.vy = -sinA * backSpeed + ny * 25;
@@ -2837,20 +3326,28 @@
         );
 
         if (shouldLeaveMark && this.prevRearLeft) {
-          const alpha = Math.min(1, 0.25 + this.slipAngle * 0.85);
-          world.stampTireMark(this.prevRearLeft.x, this.prevRearLeft.y, rlX, rlY, this.surface, alpha);
-          world.stampTireMark(this.prevRearRight.x, this.prevRearRight.y, rrX, rrY, this.surface, alpha);
+          const stepDist = Math.hypot(rlX - this.prevRearLeft.x, rlY - this.prevRearLeft.y);
+          if (stepDist >= 6.0) {
+            const alpha = Math.min(1, 0.25 + this.slipAngle * 0.85);
+            world.stampTireMark(this.prevRearLeft.x, this.prevRearLeft.y, rlX, rlY, this.surface, alpha);
+            world.stampTireMark(this.prevRearRight.x, this.prevRearRight.y, rrX, rrY, this.surface, alpha);
 
-          if (this.slipAngle > 0.34 && this.prevFrontLeft) {
-            world.stampTireMark(this.prevFrontLeft.x, this.prevFrontLeft.y, flX, flY, this.surface, alpha * 0.6);
-            world.stampTireMark(this.prevFrontRight.x, this.prevFrontRight.y, frX, frY, this.surface, alpha * 0.6);
+            if (this.slipAngle > 0.34 && this.prevFrontLeft) {
+              world.stampTireMark(this.prevFrontLeft.x, this.prevFrontLeft.y, flX, flY, this.surface, alpha * 0.6);
+              world.stampTireMark(this.prevFrontRight.x, this.prevFrontRight.y, frX, frY, this.surface, alpha * 0.6);
+            }
+
+            this.prevRearLeft = { x: rlX, y: rlY };
+            this.prevRearRight = { x: rrX, y: rrY };
+            this.prevFrontLeft = { x: flX, y: flY };
+            this.prevFrontRight = { x: frX, y: frY };
           }
+        } else {
+          this.prevRearLeft = { x: rlX, y: rlY };
+          this.prevRearRight = { x: rrX, y: rrY };
+          this.prevFrontLeft = { x: flX, y: flY };
+          this.prevFrontRight = { x: frX, y: frY };
         }
-
-        this.prevRearLeft = { x: rlX, y: rlY };
-        this.prevRearRight = { x: rrX, y: rrY };
-        this.prevFrontLeft = { x: flX, y: flY };
-        this.prevFrontRight = { x: frX, y: frY };
 
         // Emit surface-specific particle plumes (Gravel Scree, Sienna Dirt Clods, Cracked Asphalt Crumbs, Tarmac Smoke)
         if (this.surface === 'gravel' && this.speed > 52) {
@@ -2962,6 +3459,93 @@
       }
     }
 
+    /**
+     * Persistent Save Manager (IndexedDB + Cloud Sync support)
+     * Automatically saves and restores Personal Best stage times, sector splits, ghost replays, and settings.
+     */
+    class RallySaveManager {
+      constructor() {
+        this.dbName = 'TarmacGravelTrialDB_v1';
+        this.storeName = 'rallySaveStore';
+        this.dbPromise = null;
+        this.cloudSaveFn = null;
+      }
+
+      openDB() {
+        if (this.dbPromise) return this.dbPromise;
+        this.dbPromise = new Promise((resolve) => {
+          if (!window.indexedDB) {
+            resolve(null);
+            return;
+          }
+          try {
+            const req = window.indexedDB.open(this.dbName, 1);
+            req.onupgradeneeded = (e) => {
+              const db = e.target.result;
+              if (!db.objectStoreNames.contains(this.storeName)) {
+                db.createObjectStore(this.storeName);
+              }
+            };
+            req.onsuccess = (e) => resolve(e.target.result);
+            req.onerror = () => resolve(null);
+          } catch (err) {
+            resolve(null);
+          }
+        });
+        return this.dbPromise;
+      }
+
+      async loadAll() {
+        const db = await this.openDB();
+        if (!db) return null;
+        return new Promise((resolve) => {
+          try {
+            const tx = db.transaction(this.storeName, 'readonly');
+            const store = tx.objectStore(this.storeName);
+            const req = store.get('profile_v1');
+            req.onsuccess = () => resolve(req.result || null);
+            req.onerror = () => resolve(null);
+          } catch (err) {
+            resolve(null);
+          }
+        });
+      }
+
+      async saveAll(bestRecords, prefs = {}) {
+        const payload = {
+          updatedAt: Date.now(),
+          prefs,
+          records: bestRecords.map((rec) => {
+            if (!rec) return null;
+            return {
+              time: rec.time,
+              sectors: rec.sectors,
+              ghost: rec.ghost
+            };
+          })
+        };
+
+        const badge = document.getElementById('saveStatusBadge');
+        if (badge) {
+          badge.textContent = 'SAVED';
+        }
+
+        const db = await this.openDB();
+        if (db) {
+          try {
+            const tx = db.transaction(this.storeName, 'readwrite');
+            tx.objectStore(this.storeName).put(payload, 'profile_v1');
+          } catch (err) {
+            console.warn('IndexedDB write failed:', err);
+          }
+        }
+
+        if (typeof this.cloudSaveFn === 'function') {
+          this.cloudSaveFn(payload);
+        }
+      }
+    }
+
     class RallyGame {
       constructor() {
         this.canvas = document.getElementById('gameCanvas');
@@ -2970,6 +3554,7 @@
         this.car = new RallyCar();
         this.particles = new ParticleSystem();
         this.audio = new RallyAudio();
+        this.saveManager = new RallySaveManager();
 
         this.currentStage = 0;
         this.state = 'ready';
@@ -2993,6 +3578,34 @@
         this.setupEvents();
         this.resize();
         this.loadStage(0);
+        this.initSavedData();
+      }
+
+      async initSavedData() {
+        const saved = await this.saveManager.loadAll();
+        if (saved && Array.isArray(saved.records)) {
+          this.applyLoadedRecords(saved.records);
+        }
+      }
+
+      applyLoadedRecords(records) {
+        for (let i = 0; i < STAGES.length; i++) {
+          const rec = records[i];
+          if (rec && typeof rec.time === 'number') {
+            if (!this.bestRecords[i] || rec.time < this.bestRecords[i].time) {
+              this.bestRecords[i] = {
+                time: rec.time,
+                sectors: Array.isArray(rec.sectors) ? rec.sectors : [null, null, null],
+                ghost: Array.isArray(rec.ghost) ? rec.ghost : []
+              };
+            }
+          }
+          const modalLabel = document.getElementById(`modalBest${i}`);
+          if (modalLabel && this.bestRecords[i]) {
+            modalLabel.textContent = this.formatTime(this.bestRecords[i].time);
+          }
+        }
+        this.updateHUD();
       }
 
       setupEvents() {
@@ -3025,14 +3638,6 @@
           this.syncInput();
         });
 
-        window.addEventListener('blur', () => {
-          this.keys.left = false;
-          this.keys.right = false;
-          this.keys.brake = false;
-          this.touches.clear();
-          this.syncInput();
-        });
-
         const handleTouch = (e) => {
           e.preventDefault();
           this.audio.unlock();
@@ -3054,25 +3659,42 @@
         this.canvas.addEventListener('touchcancel', handleTouch, { passive: false });
 
         document.getElementById('stageMenuBtn').addEventListener('click', () => {
+          this.audio.playUIClick();
           document.getElementById('stageModal').classList.remove('hidden');
         });
         document.getElementById('closeModalBtn').addEventListener('click', () => {
-          this.audio.unlock();
+          this.audio.playUIClick();
           document.getElementById('stageModal').classList.add('hidden');
         });
         document.getElementById('startStageBtn').addEventListener('click', () => {
-          this.audio.unlock();
+          this.audio.playUIClick(true);
           this.audio.playStartChime();
           document.getElementById('stageModal').classList.add('hidden');
         });
-        document.getElementById('restartBtn').addEventListener('click', () => this.restartStage());
-        document.getElementById('audioBtn').addEventListener('click', () => this.toggleAudio());
+
+        const handleRestartClick = () => {
+          this.audio.playUIClick(true);
+          this.restartStage();
+        };
+        const handleAudioClick = () => {
+          this.audio.playUIClick();
+          this.toggleAudio();
+        };
+
+        document.getElementById('restartBtn').addEventListener('click', handleRestartClick);
+        document.getElementById('audioBtn').addEventListener('click', handleAudioClick);
+        const restartMobile = document.getElementById('restartBtnMobile');
+        const audioMobile = document.getElementById('audioBtnMobile');
+        if (restartMobile) restartMobile.addEventListener('click', handleRestartClick);
+        if (audioMobile) audioMobile.addEventListener('click', handleAudioClick);
 
         document.getElementById('retryStageBtn').addEventListener('click', () => {
+          this.audio.playUIClick(true);
           document.getElementById('finishOverlay').classList.add('hidden');
           this.restartStage();
         });
         document.getElementById('nextStageBtn').addEventListener('click', () => {
+          this.audio.playUIClick(true);
           document.getElementById('finishOverlay').classList.add('hidden');
           const nextIdx = (this.currentStage + 1) % STAGES.length;
           this.loadStage(nextIdx);
@@ -3083,6 +3705,7 @@
 
         document.querySelectorAll('.stage-option').forEach((btn) => {
           btn.addEventListener('click', () => {
+            this.audio.playUIClick();
             const idx = parseInt(btn.getAttribute('data-stage'), 10);
             this.loadStage(idx);
             document.querySelectorAll('.stage-option').forEach((b) => b.classList.remove('active-stage'));
@@ -3131,10 +3754,14 @@
 
       toggleAudio() {
         const on = this.audio.toggle();
-        const btn = document.getElementById('audioBtn');
-        btn.textContent = on ? 'SOUND:ON' : 'SOUND:OFF';
-        btn.style.backgroundColor = on ? PALETTE.pine : PALETTE.cream;
-        btn.style.color = on ? PALETTE.cream : PALETTE.ink;
+        for (const id of ['audioBtn', 'audioBtnMobile']) {
+          const btn = document.getElementById(id);
+          if (!btn) continue;
+          btn.textContent = on ? 'SOUND:ON' : 'SOUND:OFF';
+          btn.style.backgroundColor = on ? PALETTE.pine : PALETTE.cream;
+          btn.style.color = on ? PALETTE.cream : PALETTE.ink;
+        }
+        this.saveManager.saveAll(this.bestRecords, { audioEnabled: on });
       }
 
       resize() {
@@ -3154,9 +3781,9 @@
       }
 
       restartStage() {
-        this.world.bakeCanvas();
+        this.world.tireMarks = [];
         const pose = this.world.startPose;
-        this.car.reset(pose.x, pose.y, pose.angle);
+        this.car.reset(pose.x, pose.y, pose.angle, this.world.startSampleIdx);
         this.particles.list = [];
         this.cam.x = pose.x;
         this.cam.y = pose.y;
@@ -3201,18 +3828,19 @@
         if (this.ghostSampleTimer >= GHOST_STEP) {
           this.ghostSampleTimer -= GHOST_STEP;
           this.currentGhost.push({
-            x: this.car.x,
-            y: this.car.y,
-            a: this.car.angle,
-            steer: this.car.steer,
-            drift: this.car.driftAngle
+            x: Math.round(this.car.x * 10) / 10,
+            y: Math.round(this.car.y * 10) / 10,
+            a: Math.round(this.car.angle * 1000) / 1000,
+            steer: Math.round(this.car.steer * 100) / 100,
+            drift: Math.round(this.car.driftAngle * 100) / 100
           });
         }
 
         // Strict Sequential 3-Sector & Sub-Checkpoint Verification
         const progIdx = this.car.maxProgressIdx;
+        const startIdx = this.world.startSampleIdx;
         const sIndices = this.world.sectorIndices;
-        const midS1 = Math.floor(sIndices[0] * 0.5);
+        const midS1 = Math.floor((startIdx + sIndices[0]) * 0.5);
         const midS2 = Math.floor((sIndices[0] + sIndices[1]) * 0.5);
         const midS3 = Math.floor((sIndices[1] + sIndices[2]) * 0.5);
 
@@ -3290,6 +3918,7 @@
             ghost: [...this.currentGhost]
           };
           document.getElementById(`modalBest${this.currentStage}`).textContent = this.formatTime(this.runTime);
+          this.saveManager.saveAll(this.bestRecords, { audioEnabled: this.audio.enabled });
         }
 
         document.getElementById('newRecordBadge').classList.toggle('hidden', !isNewRecord);
@@ -3439,12 +4068,15 @@
             const pr = 18 + (cellHash % 14);
             const safeMargin = pr + 24;
             if (px < -safeMargin || px > W + safeMargin || py < -safeMargin || py > W + safeMargin) {
+              const outVariants = ['alpine_spruce', 'deciduous_oak', 'cypress_cluster', 'twin_pine'];
               this.world.drawPineTree(ctx, {
                 x: px,
                 y: py,
                 r: pr,
                 seed: cellHash,
-                angle: (cellHash % 62) * 0.1
+                angle: (cellHash % 62) * 0.1,
+                variant: outVariants[cellHash % outVariants.length],
+                autumnTint: (cellHash % 5) === 0
               });
             }
           }
@@ -3475,8 +4107,11 @@
         // 0. Draw Seamless Infinite Topographic Map Background
         this.drawInfiniteTopography(ctx, camX, camY, w / zoom, h / zoom);
 
-        // 1. Draw Baked World (Variable-Width Track, Physical Surface Transitions, Trees, Bushes, Rocks & Skidmarks)
+        // 1. Draw Baked World (Variable-Width Track, Physical Surface Transitions, Trees, Bushes & Rocks)
         ctx.drawImage(this.world.canvas, 0, 0);
+
+        // 1B. Draw Bounded FIFO Tire Marks & Surface Ruts (Oldest marks fade & are removed once cap is reached)
+        this.world.drawTireMarks(ctx, camX, camY, w / zoom, h / zoom);
 
         // 2. Draw Dust, Gravel & Foliage Burst Particles
         this.particles.draw(ctx);
@@ -3765,6 +4400,90 @@
 
       requestAnimationFrame(gameLoop);
     };
+  </script>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, doc, setDoc, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    async function initCloudPersistence() {
+      if (typeof __firebase_config === 'undefined' || !__firebase_config) return;
+      try {
+        const firebaseConfig = JSON.parse(__firebase_config);
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+          await signInWithCustomToken(auth, __initial_auth_token);
+        } else {
+          await signInAnonymously(auth);
+        }
+
+        const user = auth.currentUser;
+        if (!user) return;
+
+        const recordsCol = collection(db, 'artifacts', appId, 'users', user.uid, 'stageRecords');
+
+        // Listen for saved stage records
+        onSnapshot(
+          recordsCol,
+          (snapshot) => {
+            const loaded = new Array(5).fill(null);
+            snapshot.forEach((docSnap) => {
+              const data = docSnap.data();
+              if (typeof data.stageIndex === 'number' && typeof data.time === 'number') {
+                let ghostArr = [];
+                if (typeof data.ghostJson === 'string') {
+                  try { ghostArr = JSON.parse(data.ghostJson); } catch (e) { ghostArr = []; }
+                }
+                loaded[data.stageIndex] = {
+                  time: data.time,
+                  sectors: Array.isArray(data.sectors) ? data.sectors : [null, null, null],
+                  ghost: ghostArr
+                };
+              }
+            });
+            if (window.game && typeof window.game.applyLoadedRecords === 'function') {
+              window.game.applyLoadedRecords(loaded);
+            }
+          },
+          (err) => {
+            console.warn('Cloud sync listener notice:', err);
+          }
+        );
+
+        // Hook cloud save into RallySaveManager
+        const attachSaveHook = () => {
+          if (!window.game || !window.game.saveManager) {
+            setTimeout(attachSaveHook, 150);
+            return;
+          }
+          window.game.saveManager.cloudSaveFn = async (payload) => {
+            if (!auth.currentUser || !payload || !Array.isArray(payload.records)) return;
+            for (let i = 0; i < payload.records.length; i++) {
+              const rec = payload.records[i];
+              if (!rec) continue;
+              const docRef = doc(db, 'artifacts', appId, 'users', auth.currentUser.uid, 'stageRecords', `stage_${i}`);
+              await setDoc(docRef, {
+                stageIndex: i,
+                time: rec.time,
+                sectors: rec.sectors || [null, null, null],
+                ghostJson: JSON.stringify(rec.ghost || []),
+                updatedAt: Date.now()
+              });
+            }
+          };
+        };
+        attachSaveHook();
+      } catch (e) {
+        console.warn('Using local IndexedDB save storage:', e);
+      }
+    }
+
+    initCloudPersistence();
   </script>
 </body>
 </html>
