@@ -117,7 +117,7 @@
         <button id="restartBtn" class="print-btn px-1.5 sm:px-2.5 py-1 text-[10px] sm:text-xs font-bold uppercase tracking-tight sm:tracking-wider" title="Restart Stage (R)">
           RESET
         </button>
-        <button id="audioBtn" class="print-btn px-1.5 sm:px-2.5 py-1 text-[10px] sm:text-xs font-bold uppercase tracking-tight sm:tracking-wider bg-[#3A5A40] text-[#F4F1EA]" title="Toggle Engine & Gravel Sound (M)">
+        <button id="audioBtn" class="print-btn px-1.5 sm:px-2.5 py-1 text-[10px] sm:text-xs font-bold uppercase tracking-tight sm:tracking-wider bg-[#3A5A40] text-[#F4F1EA]" title="Toggle Engine & Surface Sound (M)">
           SOUND:ON
         </button>
       </div>
@@ -389,19 +389,52 @@
       return `rgb(${rgb[0]},${rgb[1]},${rgb[2]})`;
     }
 
-    // Procedural Web Audio Synthesizer (Zero External Assets)
+    // Sample-Synthesized Acoustic Web Audio Engine (4-Stroke Combustion Loop, Stick-Slip Tire Scrub & Granular Surfaces)
     class RallyAudio {
       constructor() {
         this.ctx = null;
         this.enabled = true;
         this.unlocked = false;
-        this.engineOsc1 = null;
-        this.engineOsc2 = null;
+
+        // Master bus
+        this.masterGain = null;
+        this.compressor = null;
+
+        // Sample-synthesized looping sources & filters
+        this.engineSource = null;
+        this.engineLoadFilter = null;
+        this.engineBodyFormant = null;
         this.engineGain = null;
-        this.engineFilter = null;
-        this.noiseNode = null;
-        this.noiseFilter = null;
-        this.noiseGain = null;
+
+        this.tarmacRollSource = null;
+        this.tarmacRollFilter = null;
+        this.tarmacRollGain = null;
+
+        this.tarmacSkidSource = null;
+        this.tarmacSkidFilter = null;
+        this.tarmacSkidGain = null;
+
+        this.gravelRollSource = null;
+        this.gravelRollFilter = null;
+        this.gravelRollGain = null;
+
+        this.gravelSlideSource = null;
+        this.gravelSlideFilter = null;
+        this.gravelSlideGain = null;
+
+        this.dirtRollSource = null;
+        this.dirtRollFilter = null;
+        this.dirtRollGain = null;
+
+        // State tracking
+        this.smoothedSpeed = 0;
+        this.smoothedSlip = 0;
+        this.smoothedRpm = 0.22;
+        this.lastGear = 1;
+        this.shiftDipTimer = 0;
+        this.crackDistanceAccum = 0;
+        this.nextCrackSpacing = 28;
+        this.burbleCooldown = 0;
       }
 
       init() {
@@ -409,55 +442,325 @@
         const AudioCtx = window.AudioContext || window.webkitAudioContext;
         if (!AudioCtx) return;
         this.ctx = new AudioCtx();
+        const sr = this.ctx.sampleRate;
 
-        this.engineOsc1 = this.ctx.createOscillator();
-        this.engineOsc2 = this.ctx.createOscillator();
-        this.engineOsc1.type = 'sawtooth';
-        this.engineOsc2.type = 'square';
+        // 1. Master Bus & Glue Compressor
+        this.compressor = this.ctx.createDynamicsCompressor();
+        this.compressor.threshold.value = -14;
+        this.compressor.knee.value = 10;
+        this.compressor.ratio.value = 3.2;
+        this.compressor.attack.value = 0.005;
+        this.compressor.release.value = 0.10;
 
-        this.engineFilter = this.ctx.createBiquadFilter();
-        this.engineFilter.type = 'lowpass';
-        this.engineFilter.frequency.value = 320;
-        this.engineFilter.Q.value = 2.2;
+        this.masterGain = this.ctx.createGain();
+        this.masterGain.gain.value = 0.90;
+        this.masterGain.connect(this.compressor);
+        this.compressor.connect(this.ctx.destination);
+
+        // Deterministic PRNG for building rich, seamless circular audio buffers
+        let seed = 197401;
+        const rand = () => {
+          seed = (seed * 1664525 + 1013904223) >>> 0;
+          return seed / 4294967296;
+        };
+
+        // =========================================================================
+        // 2. PROCEDURAL 4-STROKE RALLY ENGINE BUFFER (Discrete Cylinder Combustions)
+        //    Synthesizes 256 individual cylinder exhaust blowdown pulses (64 4-stroke cycles)
+        //    into a 4.0s circular buffer. Varying playbackRate scales firing rate organically
+        //    without the artificial buzz of continuous Web Audio oscillators.
+        // =========================================================================
+        const engDuration = 4.0;
+        const engLen = Math.floor(sr * engDuration);
+        const engineBuffer = this.ctx.createBuffer(1, engLen, sr);
+        const engData = engineBuffer.getChannelData(0);
+
+        const numPulses = 256; // 64 Hz base firing rate (~1920 RPM reference)
+        const cylAmp = [1.0, 0.84, 0.94, 0.80]; // 1-3-4-2 manifold asymmetry
+        const cylPitch = [1.0, 0.96, 1.03, 0.95];
+
+        for (let p = 0; p < numPulses; p++) {
+          const cyl = p & 3;
+          const jitterSec = (rand() - 0.5) * 0.00045;
+          const startSec = (p / numPulses) * engDuration + jitterSec;
+          const startIdx = ((Math.floor(startSec * sr) % engLen) + engLen) % engLen;
+
+          const amp = cylAmp[cyl] * (0.91 + rand() * 0.18);
+          const pScale = cylPitch[cyl] * (0.98 + rand() * 0.04);
+          const pulseLen = Math.floor(sr * 0.036);
+
+          let gasFilter = 0;
+          for (let i = 0; i < pulseLen; i++) {
+            const t = i / sr;
+            // Rapid exhaust valve opening attack (1.1ms) + exponential blowdown decay
+            const attack = 1 - Math.exp(-t * 950);
+            const decay = Math.exp(-t * 155);
+            const env = attack * decay;
+
+            // Damped acoustic exhaust header & muffler modes (pitch-sweeping slightly with pressure drop)
+            const pDrop = 1 + 0.22 * Math.exp(-t * 280);
+            const w1 = Math.sin(2 * Math.PI * (135 * pScale * pDrop) * t);
+            const w2 = Math.sin(2 * Math.PI * (270 * pScale * pDrop) * t + 0.4) * 0.68;
+            const w3 = Math.sin(2 * Math.PI * (415 * pScale) * t + 1.1) * 0.36;
+            const w4 = Math.sin(2 * Math.PI * (585 * pScale) * t + 2.0) * 0.18;
+
+            // Turbulent exhaust gas puff during blowdown
+            const white = rand() * 2 - 1;
+            gasFilter += (white - gasFilter) * 0.22;
+            const gasChuff = gasFilter * Math.exp(-t * 290) * 0.55;
+
+            const sample = (w1 + w2 + w3 + w4 + gasChuff) * env * amp;
+            const idx = (startIdx + i) % engLen;
+            engData[idx] += sample;
+          }
+        }
+
+        // Add subtle mechanical valvetrain/induction purr & soft-saturate the engine buffer
+        let lpState = 0;
+        let hpState = 0;
+        for (let i = 0; i < engLen; i++) {
+          const mechNoise = (rand() * 2 - 1) * 0.05;
+          const raw = Math.tanh((engData[i] + mechNoise) * 0.95);
+          // Warm low-pass + DC/sub-bass high-pass
+          lpState += (raw - lpState) * 0.18;
+          hpState += (lpState - hpState) * 0.012;
+          engData[i] = (lpState - hpState) * 0.85;
+        }
+        this.engineBuffer = engineBuffer;
+
+        // =========================================================================
+        // 3. SMOOTH ASPHALT TIRE ROLL & STICK-SLIP RUBBER SKID BUFFERS
+        //    Replaces bandpass-filtered wind whoosh with physical rubber tread
+        //    stick-slip friction (rapid tread-block grab/snap modulating carcass resonances).
+        // =========================================================================
+        const loopDur = 3.0;
+        const loopLen = Math.floor(sr * loopDur);
+
+        // 3A. Smooth Asphalt Tire Cavity Roll Buffer
+        const tarmacRollBuffer = this.ctx.createBuffer(1, loopLen, sr);
+        const trData = tarmacRollBuffer.getChannelData(0);
+        let trBrown = 0;
+        let trLp = 0;
+        for (let i = 0; i < loopLen; i++) {
+          const w = rand() * 2 - 1;
+          trBrown = (trBrown + 0.035 * w) / 1.035;
+          trLp += (trBrown - trLp) * 0.08;
+          const t = i / sr;
+          // Subtle tire cavity resonance around 168Hz & 224Hz
+          const cavity = Math.sin(2 * Math.PI * 168 * t) * 0.08 + Math.sin(2 * Math.PI * 224 * t) * 0.05;
+          trData[i] = (trLp * 2.4 + cavity) * 0.65;
+        }
+        this.tarmacRollBuffer = tarmacRollBuffer;
+
+        // 3B. Dry Asphalt Tire Scrub & Skid Buffer (Aperiodic rubber shear + upper-frequency tread squeal, zero vowel formants)
+        const tarmacSkidBuffer = this.ctx.createBuffer(1, loopLen, sr);
+        const tsData = tarmacSkidBuffer.getChannelData(0);
+
+        // Stamp thousands of overlapping micro-friction rubber shear grains (1.5ms - 4.5ms)
+        const skidGrains = 6400;
+        for (let g = 0; g < skidGrains; g++) {
+          const startIdx = Math.floor(rand() * loopLen);
+          const durSec = 0.0015 + rand() * 0.0032;
+          const len = Math.floor(sr * durSec);
+          // Keep friction frequencies in the upper-mid tire squeal & rubber scrub band (1650Hz - 3100Hz), well above human vowel formants
+          const fSqueal = 1750 + rand() * 1150;
+          const fHarm = fSqueal * (1.48 + rand() * 0.14);
+          const amp = 0.22 + rand() * 0.55;
+          let gritLp = 0;
+          let gritHp = 0;
+
+          for (let i = 0; i < len; i++) {
+            const t = i / sr;
+            const env = Math.sin((i / len) * Math.PI);
+            const w = rand() * 2 - 1;
+            // Band-limited road-macadam grit (1100Hz - 3400Hz)
+            gritLp += (w - gritLp) * 0.42;
+            gritHp += (gritLp - gritHp) * 0.14;
+            const roadShear = gritLp - gritHp;
+
+            // Crisp, short rubber-tread micro-chirp mixed with coarse asphalt shear
+            const chirp = Math.sin(2 * Math.PI * fSqueal * t) * 0.32 + Math.sin(2 * Math.PI * fHarm * t) * 0.14;
+            const idx = (startIdx + i) % loopLen;
+            tsData[idx] += (roadShear * 0.68 + chirp * 0.32) * env * amp;
+          }
+        }
+
+        // High-pass above 1050Hz to eliminate any hollow vocal/vowel chest resonance, then soft-limit
+        let tsHp = 0;
+        let tsLp = 0;
+        for (let i = 0; i < loopLen; i++) {
+          const raw = Math.tanh(tsData[i] * 0.65);
+          tsLp += (raw - tsLp) * 0.38;
+          tsHp += (tsLp - tsHp) * 0.16;
+          tsData[i] = (tsLp - tsHp) * 0.90;
+        }
+        this.tarmacSkidBuffer = tarmacSkidBuffer;
+
+        // =========================================================================
+        // 4. GRANULAR LOOSE GRAVEL & PACKED DIRT BUFFERS (Discrete Stone & Clod Transients)
+        //    Synthesizes thousands of short 2ms–8ms mineral stone-on-stone crunches
+        //    and earthen soil clod impacts—zero high-frequency paper rustle!
+        // =========================================================================
+        const gravelRollBuffer = this.ctx.createBuffer(1, loopLen, sr);
+        const gravelSlideBuffer = this.ctx.createBuffer(1, loopLen, sr);
+        const dirtRollBuffer = this.ctx.createBuffer(1, loopLen, sr);
+
+        const grData = gravelRollBuffer.getChannelData(0);
+        const gsData = gravelSlideBuffer.getChannelData(0);
+        const drData = dirtRollBuffer.getChannelData(0);
+
+        // Helper to stamp discrete stone/earth micro-crunch transients into a circular buffer
+        const stampCrunchGrains = (targetBuf, grainCount, minFreq, maxFreq, minDur, maxDur, noiseMix) => {
+          for (let g = 0; g < grainCount; g++) {
+            const startIdx = Math.floor(rand() * loopLen);
+            const durSec = minDur + rand() * (maxDur - minDur);
+            const len = Math.floor(sr * durSec);
+            const fA = minFreq + rand() * (maxFreq - minFreq);
+            const fB = fA * (1.35 + rand() * 0.35);
+            const amp = 0.25 + rand() * 0.75;
+            let lp = 0;
+
+            for (let i = 0; i < len; i++) {
+              const t = i / sr;
+              const env = Math.sin((i / len) * Math.PI) * Math.exp(-t / (durSec * 0.42));
+              const w = rand() * 2 - 1;
+              lp += (w - lp) * 0.28;
+              // Woody/mineral damped impact transient (too short to ever sound tonal, pure crunch)
+              const mineral = Math.sin(2 * Math.PI * fA * t) * 0.55 + Math.sin(2 * Math.PI * fB * t + 0.7) * 0.35;
+              const val = (mineral * (1 - noiseMix) + lp * noiseMix) * env * amp;
+              const idx = (startIdx + i) % loopLen;
+              targetBuf[idx] += val;
+            }
+          }
+
+          // Soft-saturate and low-pass to remove any papery high-frequency fizz
+          let smooth = 0;
+          let dc = 0;
+          for (let i = 0; i < loopLen; i++) {
+            const clipped = Math.tanh(targetBuf[i] * 0.75);
+            smooth += (clipped - smooth) * 0.26;
+            dc += (smooth - dc) * 0.008;
+            targetBuf[i] = (smooth - dc) * 0.85;
+          }
+        };
+
+        // Loose Gravel Roll: ~3,800 crisp limestone pebble crunches (340Hz - 1450Hz, 2ms - 6.5ms)
+        stampCrunchGrains(grData, 3800, 340, 1450, 0.0020, 0.0065, 0.48);
+
+        // Loose Gravel Sideways Drift Plowing: ~4,600 heavier, chunkier stone cascades (240Hz - 1180Hz, 3ms - 9ms)
+        stampCrunchGrains(gsData, 4600, 240, 1180, 0.0030, 0.0090, 0.55);
+
+        // Packed Dirt Roll & Slide: ~3,200 deeper loamy clay/soil clod crunches (170Hz - 760Hz, 4ms - 11ms)
+        stampCrunchGrains(drData, 3200, 170, 760, 0.0040, 0.0110, 0.62);
+
+        this.gravelRollBuffer = gravelRollBuffer;
+        this.gravelSlideBuffer = gravelSlideBuffer;
+        this.dirtRollBuffer = dirtRollBuffer;
+
+        // =========================================================================
+        // 5. CONNECT PERSISTENT LOOPING NODES
+        // =========================================================================
+        // 5A. Engine Loop + Fixed Acoustic Exhaust Pipe Formant + Dynamic Load Lowpass
+        this.engineSource = this.ctx.createBufferSource();
+        this.engineSource.buffer = this.engineBuffer;
+        this.engineSource.loop = true;
+        this.engineSource.playbackRate.value = 0.65;
+
+        this.engineBodyFormant = this.ctx.createBiquadFilter();
+        this.engineBodyFormant.type = 'peaking';
+        this.engineBodyFormant.frequency.value = 175;
+        this.engineBodyFormant.Q.value = 1.4;
+        this.engineBodyFormant.gain.value = 3.5;
+
+        this.engineLoadFilter = this.ctx.createBiquadFilter();
+        this.engineLoadFilter.type = 'lowpass';
+        this.engineLoadFilter.frequency.value = 480;
+        this.engineLoadFilter.Q.value = 0.85;
 
         this.engineGain = this.ctx.createGain();
         this.engineGain.gain.value = 0.0001;
 
-        this.engineOsc1.connect(this.engineFilter);
-        this.engineOsc2.connect(this.engineFilter);
-        this.engineFilter.connect(this.engineGain);
-        this.engineGain.connect(this.ctx.destination);
+        this.engineSource.connect(this.engineBodyFormant);
+        this.engineBodyFormant.connect(this.engineLoadFilter);
+        this.engineLoadFilter.connect(this.engineGain);
+        this.engineGain.connect(this.masterGain);
+        this.engineSource.start();
 
-        this.engineOsc1.start();
-        this.engineOsc2.start();
+        // 5B. Tarmac Tire Roll
+        this.tarmacRollSource = this.ctx.createBufferSource();
+        this.tarmacRollSource.buffer = this.tarmacRollBuffer;
+        this.tarmacRollSource.loop = true;
+        this.tarmacRollFilter = this.ctx.createBiquadFilter();
+        this.tarmacRollFilter.type = 'lowpass';
+        this.tarmacRollFilter.frequency.value = 320;
+        this.tarmacRollGain = this.ctx.createGain();
+        this.tarmacRollGain.gain.value = 0.0001;
 
-        const bufferSize = this.ctx.sampleRate * 2;
-        const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
-        const output = noiseBuffer.getChannelData(0);
-        let lastOut = 0.0;
-        for (let i = 0; i < bufferSize; i++) {
-          const white = Math.random() * 2 - 1;
-          output[i] = (lastOut + (0.05 * white)) / 1.05;
-          lastOut = output[i];
-          output[i] *= 3.0;
-        }
+        this.tarmacRollSource.connect(this.tarmacRollFilter);
+        this.tarmacRollFilter.connect(this.tarmacRollGain);
+        this.tarmacRollGain.connect(this.masterGain);
+        this.tarmacRollSource.start();
 
-        this.noiseNode = this.ctx.createBufferSource();
-        this.noiseNode.buffer = noiseBuffer;
-        this.noiseNode.loop = true;
+        // 5C. Tarmac Tire Drift / Scrub (High-passed to prevent vocal "wah/woah" filter sweeps)
+        this.tarmacSkidSource = this.ctx.createBufferSource();
+        this.tarmacSkidSource.buffer = this.tarmacSkidBuffer;
+        this.tarmacSkidSource.loop = true;
+        this.tarmacSkidFilter = this.ctx.createBiquadFilter();
+        this.tarmacSkidFilter.type = 'lowpass';
+        this.tarmacSkidFilter.frequency.value = 2600;
+        this.tarmacSkidFilter.Q.value = 0.7;
+        this.tarmacSkidGain = this.ctx.createGain();
+        this.tarmacSkidGain.gain.value = 0.0001;
 
-        this.noiseFilter = this.ctx.createBiquadFilter();
-        this.noiseFilter.type = 'bandpass';
-        this.noiseFilter.frequency.value = 650;
-        this.noiseFilter.Q.value = 1.5;
+        this.tarmacSkidSource.connect(this.tarmacSkidFilter);
+        this.tarmacSkidFilter.connect(this.tarmacSkidGain);
+        this.tarmacSkidGain.connect(this.masterGain);
+        this.tarmacSkidSource.start();
 
-        this.noiseGain = this.ctx.createGain();
-        this.noiseGain.gain.value = 0.0001;
+        // 5D. Loose Gravel Rolling Crunch
+        this.gravelRollSource = this.ctx.createBufferSource();
+        this.gravelRollSource.buffer = this.gravelRollBuffer;
+        this.gravelRollSource.loop = true;
+        this.gravelRollFilter = this.ctx.createBiquadFilter();
+        this.gravelRollFilter.type = 'lowpass';
+        this.gravelRollFilter.frequency.value = 1150;
+        this.gravelRollGain = this.ctx.createGain();
+        this.gravelRollGain.gain.value = 0.0001;
 
-        this.noiseNode.connect(this.noiseFilter);
-        this.noiseFilter.connect(this.noiseGain);
-        this.noiseGain.connect(this.ctx.destination);
-        this.noiseNode.start();
+        this.gravelRollSource.connect(this.gravelRollFilter);
+        this.gravelRollFilter.connect(this.gravelRollGain);
+        this.gravelRollGain.connect(this.masterGain);
+        this.gravelRollSource.start();
+
+        // 5E. Loose Gravel / Dirt Sideways Drift Plowing
+        this.gravelSlideSource = this.ctx.createBufferSource();
+        this.gravelSlideSource.buffer = this.gravelSlideBuffer;
+        this.gravelSlideSource.loop = true;
+        this.gravelSlideFilter = this.ctx.createBiquadFilter();
+        this.gravelSlideFilter.type = 'lowpass';
+        this.gravelSlideFilter.frequency.value = 980;
+        this.gravelSlideGain = this.ctx.createGain();
+        this.gravelSlideGain.gain.value = 0.0001;
+
+        this.gravelSlideSource.connect(this.gravelSlideFilter);
+        this.gravelSlideFilter.connect(this.gravelSlideGain);
+        this.gravelSlideGain.connect(this.masterGain);
+        this.gravelSlideSource.start();
+
+        // 5F. Packed Dirt Rolling & Loam Shear
+        this.dirtRollSource = this.ctx.createBufferSource();
+        this.dirtRollSource.buffer = this.dirtRollBuffer;
+        this.dirtRollSource.loop = true;
+        this.dirtRollFilter = this.ctx.createBiquadFilter();
+        this.dirtRollFilter.type = 'lowpass';
+        this.dirtRollFilter.frequency.value = 680;
+        this.dirtRollGain = this.ctx.createGain();
+        this.dirtRollGain.gain.value = 0.0001;
+
+        this.dirtRollSource.connect(this.dirtRollFilter);
+        this.dirtRollFilter.connect(this.dirtRollGain);
+        this.dirtRollGain.connect(this.masterGain);
+        this.dirtRollSource.start();
       }
 
       unlock() {
@@ -485,8 +788,13 @@
           this.unlock();
           this.playStartChime();
         } else if (this.engineGain) {
-          this.engineGain.gain.setTargetAtTime(0.0001, this.ctx.currentTime, 0.04);
-          this.noiseGain.gain.setTargetAtTime(0.0001, this.ctx.currentTime, 0.04);
+          const now = this.ctx.currentTime;
+          this.engineGain.gain.setTargetAtTime(0.0001, now, 0.04);
+          this.tarmacRollGain.gain.setTargetAtTime(0.0001, now, 0.04);
+          this.tarmacSkidGain.gain.setTargetAtTime(0.0001, now, 0.04);
+          this.gravelRollGain.gain.setTargetAtTime(0.0001, now, 0.04);
+          this.gravelSlideGain.gain.setTargetAtTime(0.0001, now, 0.04);
+          this.dirtRollGain.gain.setTargetAtTime(0.0001, now, 0.04);
         }
         return this.enabled;
       }
@@ -494,17 +802,20 @@
       playStartChime() {
         if (!this.enabled || !this.ctx) return;
         const now = this.ctx.currentTime;
-        const osc = this.ctx.createOscillator();
-        const gain = this.ctx.createGain();
-        osc.type = 'triangle';
-        osc.frequency.setValueAtTime(520, now);
-        osc.frequency.setValueAtTime(780, now + 0.06);
-        gain.gain.setValueAtTime(0.14, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.16);
-        osc.connect(gain);
-        gain.connect(this.ctx.destination);
-        osc.start(now);
-        osc.stop(now + 0.17);
+        const freqs = [660, 880];
+        freqs.forEach((f, idx) => {
+          const t0 = now + idx * 0.065;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(f, t0);
+          gain.gain.setValueAtTime(0.055, t0);
+          gain.gain.exponentialRampToValueAtTime(0.0008, t0 + 0.16);
+          osc.connect(gain);
+          gain.connect(this.masterGain);
+          osc.start(t0);
+          osc.stop(t0 + 0.17);
+        });
       }
 
       playSplitBeep() {
@@ -513,88 +824,326 @@
         const osc = this.ctx.createOscillator();
         const gain = this.ctx.createGain();
         osc.type = 'sine';
-        osc.frequency.setValueAtTime(880, now);
-        gain.gain.setValueAtTime(0.11, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.11);
+        osc.frequency.setValueAtTime(784, now);
+        gain.gain.setValueAtTime(0.045, now);
+        gain.gain.exponentialRampToValueAtTime(0.0008, now + 0.11);
         osc.connect(gain);
-        gain.connect(this.ctx.destination);
+        gain.connect(this.masterGain);
         osc.start(now);
         osc.stop(now + 0.12);
       }
 
-      update(rpmRatio, slipIntensity, surface, speedRatio) {
+      // Realistic Front-Axle + Rear-Axle Tire Expansion-Joint Thump ("ba-dump") on Cracked Asphalt
+      playCrackThump(speedRatio) {
         if (!this.enabled || !this.ctx || this.ctx.state !== 'running') return;
         const now = this.ctx.currentTime;
+        const vol = Math.min(0.16, 0.04 + speedRatio * 0.12);
+        // Delay between front wheels and rear wheels hitting the same crack
+        const wheelbaseDelay = Math.max(0.024, 0.055 - speedRatio * 0.028);
 
-        const baseFreq = 58 + rpmRatio * 155;
-        this.engineOsc1.frequency.setTargetAtTime(baseFreq, now, 0.025);
-        this.engineOsc2.frequency.setTargetAtTime(baseFreq * 0.503, now, 0.025);
-        this.engineFilter.frequency.setTargetAtTime(240 + rpmRatio * 950, now, 0.03);
-        this.engineGain.gain.setTargetAtTime(0.11 + rpmRatio * 0.14, now, 0.03);
+        [0, wheelbaseDelay].forEach((offset, axleIdx) => {
+          const t0 = now + offset;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sine';
+          const startPitch = axleIdx === 0 ? 92 : 84;
+          osc.frequency.setValueAtTime(startPitch, t0);
+          osc.frequency.exponentialRampToValueAtTime(38, t0 + 0.028);
 
-        if (surface === 'gravel') {
-          // Coarse high-frequency loose scree crunch & stone rattle
-          const gravelGain = Math.min(0.30, speedRatio * 0.13 + slipIntensity * 0.20);
-          this.noiseFilter.frequency.setTargetAtTime(580 + speedRatio * 520 + slipIntensity * 340, now, 0.03);
-          this.noiseFilter.Q.setTargetAtTime(0.95, now, 0.03);
-          this.noiseGain.gain.setTargetAtTime(Math.max(0.0001, gravelGain), now, 0.03);
-        } else if (surface === 'dirt') {
-          // Warm loamy clay tear & muted earth scrub
-          const dirtGain = Math.min(0.24, speedRatio * 0.09 + slipIntensity * 0.16);
-          this.noiseFilter.frequency.setTargetAtTime(340 + speedRatio * 290 + slipIntensity * 210, now, 0.03);
-          this.noiseFilter.Q.setTargetAtTime(1.35, now, 0.03);
-          this.noiseGain.gain.setTargetAtTime(Math.max(0.0001, dirtGain), now, 0.03);
-        } else if (surface === 'cracked_tarmac') {
-          // Broken pavement road-chatter flutter + coarse tire scrub
-          const chatter = 0.5 + 0.5 * Math.sin(now * 48);
-          const crackGain = Math.min(0.25, speedRatio * (0.06 + chatter * 0.06) + (slipIntensity > 0.16 ? (slipIntensity - 0.16) * 0.24 : 0));
-          this.noiseFilter.frequency.setTargetAtTime(520 + chatter * 260 + slipIntensity * 380, now, 0.02);
-          this.noiseFilter.Q.setTargetAtTime(2.4, now, 0.03);
-          this.noiseGain.gain.setTargetAtTime(Math.max(0.0001, crackGain), now, 0.025);
-        } else if (surface === 'tarmac') {
-          // Pure high-Q resonant tire squeal on smooth asphalt
-          const squealGain = slipIntensity > 0.2 ? Math.min(0.22, (slipIntensity - 0.2) * 0.28) : 0.0001;
-          this.noiseFilter.frequency.setTargetAtTime(880 + slipIntensity * 420, now, 0.03);
-          this.noiseFilter.Q.setTargetAtTime(3.6, now, 0.03);
-          this.noiseGain.gain.setTargetAtTime(squealGain, now, 0.03);
+          const axleGain = vol * (axleIdx === 0 ? 0.85 : 1.0);
+          gain.gain.setValueAtTime(0.001, t0);
+          gain.gain.linearRampToValueAtTime(axleGain, t0 + 0.003);
+          gain.gain.exponentialRampToValueAtTime(0.0008, t0 + 0.032);
+
+          osc.connect(gain);
+          gain.connect(this.masterGain);
+          osc.start(t0);
+          osc.stop(t0 + 0.035);
+        });
+      }
+
+      // Soft Off-Throttle Exhaust Overrun Burble when braking hard from high RPM
+      playExhaustBurble() {
+        if (!this.enabled || !this.ctx || this.ctx.state !== 'running') return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'triangle';
+        const f0 = 105 + Math.random() * 35;
+        osc.frequency.setValueAtTime(f0, now);
+        osc.frequency.exponentialRampToValueAtTime(48, now + 0.045);
+
+        gain.gain.setValueAtTime(0.001, now);
+        gain.gain.linearRampToValueAtTime(0.055, now + 0.004);
+        gain.gain.exponentialRampToValueAtTime(0.0008, now + 0.050);
+
+        osc.connect(gain);
+        gain.connect(this.engineBodyFormant);
+        osc.start(now);
+        osc.stop(now + 0.055);
+      }
+
+      update(rpmRatio, slipIntensity, surface, speedRatio, telemetry = null) {
+        if (!this.enabled || !this.ctx || this.ctx.state !== 'running') return;
+        const now = this.ctx.currentTime;
+        const dt = telemetry?.dt || (1 / 120);
+        const braking = Boolean(telemetry?.braking);
+        const gear = telemetry?.gear ?? 1;
+        const rawSpeed = telemetry?.speed ?? (speedRatio * 480);
+
+        // 1. Gearshift Ignition Cut & Exhaust Pop
+        if (gear !== this.lastGear) {
+          this.lastGear = gear;
+          this.shiftDipTimer = 0.065;
+          if (speedRatio > 0.35) {
+            this.playExhaustBurble();
+          }
+        }
+        if (this.shiftDipTimer > 0) {
+          this.shiftDipTimer = Math.max(0, this.shiftDipTimer - dt);
+        }
+        if (this.burbleCooldown > 0) {
+          this.burbleCooldown = Math.max(0, this.burbleCooldown - dt);
+        }
+
+        // Smooth telemetry
+        this.smoothedSpeed += (speedRatio - this.smoothedSpeed) * Math.min(1, 15 * dt);
+        this.smoothedSlip += (slipIntensity - this.smoothedSlip) * Math.min(1, 16 * dt);
+        this.smoothedRpm += (rpmRatio - this.smoothedRpm) * Math.min(1, 14 * dt);
+
+        const spd = this.smoothedSpeed;
+        const slip = this.smoothedSlip;
+        const rpm = this.smoothedRpm;
+
+        // 2. 4-Stroke Combustion Buffer Playback Rate & Exhaust Load Filtering
+        //    Idle = 0.56x (~36 firings/sec lumpy rally idle), Redline = 1.78x (~114 firings/sec)
+        const targetRate = 0.56 + rpm * 1.22;
+        this.engineSource.playbackRate.setTargetAtTime(targetRate, now, 0.025);
+
+        const shiftCut = this.shiftDipTimer > 0 ? 0.42 : 1.0;
+        const throttleLoad = braking ? 0.62 : 1.0;
+        const filterCutoff = (360 + rpm * 740 + spd * 140) * throttleLoad * shiftCut;
+        this.engineLoadFilter.frequency.setTargetAtTime(filterCutoff, now, 0.03);
+
+        const isDriving = spd > 0.01 || braking;
+        const targetEngineGain = isDriving
+          ? (0.14 + rpm * 0.14) * shiftCut * (braking ? 0.80 : 1.0)
+          : 0.065;
+        this.engineGain.gain.setTargetAtTime(targetEngineGain, now, 0.03);
+
+        // Trigger occasional overrun exhaust burble when braking from high speed
+        if (braking && spd > 0.35 && this.burbleCooldown <= 0 && Math.random() < 0.08) {
+          this.burbleCooldown = 0.09 + Math.random() * 0.12;
+          this.playExhaustBurble();
+        }
+
+        // 3. Stationary Fadeout for Surface & Skid Layers
+        if (spd < 0.008) {
+          this.tarmacRollGain.gain.setTargetAtTime(0.0001, now, 0.035);
+          this.tarmacSkidGain.gain.setTargetAtTime(0.0001, now, 0.035);
+          this.gravelRollGain.gain.setTargetAtTime(0.0001, now, 0.035);
+          this.gravelSlideGain.gain.setTargetAtTime(0.0001, now, 0.035);
+          this.dirtRollGain.gain.setTargetAtTime(0.0001, now, 0.035);
+          return;
+        }
+
+        // 4. Distinct Surface Roll & Drift Acoustics Across All 4 Surfaces
+        if (surface === 'tarmac' || surface === 'cracked_tarmac') {
+          const isCracked = surface === 'cracked_tarmac';
+
+          // 4A. Smooth vs. Cracked Asphalt Tire Rolling
+          this.tarmacRollSource.playbackRate.setTargetAtTime(0.75 + spd * 0.65, now, 0.03);
+          this.tarmacRollFilter.frequency.setTargetAtTime((isCracked ? 420 : 290) + spd * 220, now, 0.03);
+          const rollGain = Math.min(0.18, spd * (isCracked ? 0.15 : 0.11));
+          this.tarmacRollGain.gain.setTargetAtTime(Math.max(0.0001, rollGain), now, 0.03);
+
+          // Cracked Asphalt adds a subtle gritty aggregate layer + rhythmic front/rear axle joint thumps
+          if (isCracked) {
+            this.dirtRollSource.playbackRate.setTargetAtTime(0.85 + spd * 0.5, now, 0.03);
+            this.dirtRollFilter.frequency.setTargetAtTime(520 + spd * 240, now, 0.03);
+            this.dirtRollGain.gain.setTargetAtTime(Math.min(0.075, spd * 0.065), now, 0.03);
+
+            this.crackDistanceAccum += rawSpeed * dt;
+            if (this.crackDistanceAccum >= this.nextCrackSpacing) {
+              this.crackDistanceAccum = 0;
+              this.nextCrackSpacing = 22 + Math.random() * 34;
+              this.playCrackThump(spd);
+            }
+          } else {
+            this.dirtRollGain.gain.setTargetAtTime(0.0001, now, 0.04);
+          }
+
+          // Fade out gravel buffers on paved roads
+          this.gravelRollGain.gain.setTargetAtTime(0.0001, now, 0.04);
+          this.gravelSlideGain.gain.setTargetAtTime(0.0001, now, 0.04);
+
+          // 4B. Crisp Rubber-on-Asphalt Tire Scrub (Steady pitch & brightness, no bandpass vowel sweep)
+          const slipThreshold = isCracked ? 0.12 : 0.14;
+          const slipExcess = Math.max(0, slip - slipThreshold);
+          const skidVol = slipExcess > 0
+            ? Math.min(0.14, (0.02 + slipExcess * 0.17) * Math.min(1, spd * 1.6))
+            : 0.0001;
+
+          const skidRate = (isCracked ? 0.90 : 0.98) + spd * 0.07;
+          this.tarmacSkidSource.playbackRate.setTargetAtTime(skidRate, now, 0.03);
+          this.tarmacSkidFilter.frequency.setTargetAtTime((isCracked ? 2150 : 2550) + spd * 350, now, 0.03);
+          this.tarmacSkidGain.gain.setTargetAtTime(Math.max(0.0001, skidVol), now, 0.025);
+
+        } else if (surface === 'dirt' || surface === 'offtrack') {
+          // 4C. Packed Dirt: Deep Loamy Soil Crunch + Sideways Earth Plowing on Drift
+          this.tarmacRollSource.playbackRate.setTargetAtTime(0.70 + spd * 0.50, now, 0.03);
+          this.tarmacRollGain.gain.setTargetAtTime(Math.min(0.08, spd * 0.06), now, 0.03);
+          this.tarmacSkidGain.gain.setTargetAtTime(0.0001, now, 0.035);
+          this.gravelRollGain.gain.setTargetAtTime(0.0001, now, 0.04);
+
+          // Primary Packed Dirt Roll & Clod Shear
+          this.dirtRollSource.playbackRate.setTargetAtTime(0.75 + spd * 0.65 + slip * 0.20, now, 0.03);
+          this.dirtRollFilter.frequency.setTargetAtTime(480 + spd * 340 + slip * 220, now, 0.03);
+          const dirtRollVol = Math.min(0.22, spd * 0.15 + slip * 0.08);
+          this.dirtRollGain.gain.setTargetAtTime(Math.max(0.0001, dirtRollVol), now, 0.03);
+
+          // Sideways Dirt Drift Digging (uses low-passed gravelSlideBuffer for heavy soil/pebble digging)
+          const slideExcess = Math.max(0, slip - 0.10);
+          const dirtSlideVol = slideExcess > 0
+            ? Math.min(0.20, slideExcess * 0.26 * (0.35 + 0.65 * spd))
+            : 0.0001;
+          this.gravelSlideSource.playbackRate.setTargetAtTime(0.68 + spd * 0.35 + slip * 0.22, now, 0.03);
+          this.gravelSlideFilter.frequency.setTargetAtTime(580 + slip * 320, now, 0.03);
+          this.gravelSlideGain.gain.setTargetAtTime(Math.max(0.0001, dirtSlideVol), now, 0.03);
+
         } else {
-          const roughGain = Math.min(0.25, speedRatio * 0.16);
-          this.noiseFilter.frequency.setTargetAtTime(280, now, 0.03);
-          this.noiseFilter.Q.setTargetAtTime(0.9, now, 0.03);
-          this.noiseGain.gain.setTargetAtTime(Math.max(0.0001, roughGain), now, 0.03);
+          // 4D. Loose Gravel: Crisp Stone-on-Stone Crunch + Heavy Gravel Cascade when Drifting
+          this.tarmacRollGain.gain.setTargetAtTime(Math.min(0.06, spd * 0.045), now, 0.03);
+          this.tarmacSkidGain.gain.setTargetAtTime(0.0001, now, 0.035);
+
+          // Crisp Limestone Gravel Bed Roll
+          this.gravelRollSource.playbackRate.setTargetAtTime(0.78 + spd * 0.68, now, 0.03);
+          this.gravelRollFilter.frequency.setTargetAtTime(780 + spd * 520, now, 0.03);
+          const gravRollVol = Math.min(0.22, spd * 0.17);
+          this.gravelRollGain.gain.setTargetAtTime(Math.max(0.0001, gravRollVol), now, 0.03);
+
+          // Underneath Earthen Bed
+          this.dirtRollSource.playbackRate.setTargetAtTime(0.80 + spd * 0.55, now, 0.03);
+          this.dirtRollFilter.frequency.setTargetAtTime(540 + spd * 260, now, 0.03);
+          this.dirtRollGain.gain.setTargetAtTime(Math.min(0.12, spd * 0.09), now, 0.03);
+
+          // Sideways Gravel Rooster-Tail & Stone Plowing Cascade
+          const slideExcess = Math.max(0, slip - 0.08);
+          const gravSlideVol = slideExcess > 0
+            ? Math.min(0.26, (0.04 + slideExcess * 0.30) * (0.35 + 0.65 * spd))
+            : 0.0001;
+          this.gravelSlideSource.playbackRate.setTargetAtTime(0.82 + spd * 0.45 + slip * 0.28, now, 0.025);
+          this.gravelSlideFilter.frequency.setTargetAtTime(860 + slip * 480, now, 0.025);
+          this.gravelSlideGain.gain.setTargetAtTime(Math.max(0.0001, gravSlideVol), now, 0.025);
         }
       }
 
-      playImpact(heavy = false) {
+      // Distinct physical knock/scrape when hitting or grazing roadside barrier bollards
+      playBarrierImpact(intensity = 0.6) {
         if (!this.enabled || !this.ctx || this.ctx.state !== 'running') return;
         const now = this.ctx.currentTime;
-        const osc = this.ctx.createOscillator();
-        const gain = this.ctx.createGain();
-        osc.type = heavy ? 'triangle' : 'sawtooth';
-        osc.frequency.setValueAtTime(heavy ? 95 : 130, now);
-        osc.frequency.exponentialRampToValueAtTime(28, now + (heavy ? 0.19 : 0.12));
-        gain.gain.setValueAtTime(heavy ? 0.34 : 0.24, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + (heavy ? 0.20 : 0.13));
-        osc.connect(gain);
-        gain.connect(this.ctx.destination);
-        osc.start(now);
-        osc.stop(now + (heavy ? 0.21 : 0.14));
+        const strength = Math.max(0.25, Math.min(1.0, intensity));
+
+        // 1. Punchy low-mid fender/bollard thump (118Hz -> 44Hz)
+        const thumpOsc = this.ctx.createOscillator();
+        const thumpGain = this.ctx.createGain();
+        thumpOsc.type = 'triangle';
+        thumpOsc.frequency.setValueAtTime(118, now);
+        thumpOsc.frequency.exponentialRampToValueAtTime(44, now + 0.085);
+
+        thumpGain.gain.setValueAtTime(0.001, now);
+        thumpGain.gain.linearRampToValueAtTime(0.25 * strength, now + 0.004);
+        thumpGain.gain.exponentialRampToValueAtTime(0.0008, now + 0.095);
+
+        thumpOsc.connect(thumpGain);
+        thumpGain.connect(this.masterGain);
+        thumpOsc.start(now);
+        thumpOsc.stop(now + 0.10);
+
+        // 2. Short post knock & body scrape transient
+        if (this.dirtRollBuffer) {
+          const knockSrc = this.ctx.createBufferSource();
+          knockSrc.buffer = this.dirtRollBuffer;
+
+          const knockFilter = this.ctx.createBiquadFilter();
+          knockFilter.type = 'bandpass';
+          knockFilter.frequency.setValueAtTime(380 + Math.random() * 90, now);
+          knockFilter.Q.setValueAtTime(1.6, now);
+
+          const knockGain = this.ctx.createGain();
+          knockGain.gain.setValueAtTime(0.26 * strength, now);
+          knockGain.gain.exponentialRampToValueAtTime(0.0008, now + 0.08);
+
+          knockSrc.connect(knockFilter);
+          knockFilter.connect(knockGain);
+          knockGain.connect(this.masterGain);
+          knockSrc.start(now, Math.random() * 2.0, 0.09);
+        }
       }
 
-      playBrushScrub() {
+      // Heavy chassis thud & crunch for solid trees and alpine boulders
+      playImpact(heavy = true) {
         if (!this.enabled || !this.ctx || this.ctx.state !== 'running') return;
         const now = this.ctx.currentTime;
-        const osc = this.ctx.createOscillator();
+        const scale = heavy ? 1.0 : 0.7;
+
+        // 1. Deep chassis body thud (88Hz -> 32Hz)
+        const bodyOsc = this.ctx.createOscillator();
+        const bodyGain = this.ctx.createGain();
+        bodyOsc.type = 'sine';
+        bodyOsc.frequency.setValueAtTime(88, now);
+        bodyOsc.frequency.exponentialRampToValueAtTime(32, now + 0.14);
+
+        bodyGain.gain.setValueAtTime(0.001, now);
+        bodyGain.gain.linearRampToValueAtTime(0.34 * scale, now + 0.005);
+        bodyGain.gain.exponentialRampToValueAtTime(0.0008, now + 0.15);
+
+        bodyOsc.connect(bodyGain);
+        bodyGain.connect(this.masterGain);
+        bodyOsc.start(now);
+        bodyOsc.stop(now + 0.16);
+
+        // 2. Granular impact crunch
+        if (this.gravelSlideBuffer) {
+          const crunchSrc = this.ctx.createBufferSource();
+          crunchSrc.buffer = this.gravelSlideBuffer;
+          const crunchFilter = this.ctx.createBiquadFilter();
+          crunchFilter.type = 'lowpass';
+          crunchFilter.frequency.setValueAtTime(520, now);
+
+          const crunchGain = this.ctx.createGain();
+          crunchGain.gain.setValueAtTime(0.32 * scale, now);
+          crunchGain.gain.exponentialRampToValueAtTime(0.0008, now + 0.13);
+
+          crunchSrc.connect(crunchFilter);
+          crunchFilter.connect(crunchGain);
+          crunchGain.connect(this.masterGain);
+          crunchSrc.start(now, Math.random() * 2.0, 0.14);
+        }
+      }
+
+      // Organic hedgerow / bush foliage brush
+      playBrushScrub() {
+        if (!this.enabled || !this.ctx || this.ctx.state !== 'running' || !this.gravelRollBuffer) return;
+        const now = this.ctx.currentTime;
+
+        const swish = this.ctx.createBufferSource();
+        swish.buffer = this.gravelRollBuffer;
+        swish.playbackRate.value = 1.25;
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(520 + Math.random() * 140, now);
+        filter.Q.setValueAtTime(1.5, now);
+
         const gain = this.ctx.createGain();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(290 + Math.random() * 110, now);
-        osc.frequency.exponentialRampToValueAtTime(110, now + 0.08);
-        gain.gain.setValueAtTime(0.09, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
-        osc.connect(gain);
-        gain.connect(this.ctx.destination);
-        osc.start(now);
-        osc.stop(now + 0.10);
+        gain.gain.setValueAtTime(0.001, now);
+        gain.gain.linearRampToValueAtTime(0.14, now + 0.015);
+        gain.gain.exponentialRampToValueAtTime(0.0008, now + 0.12);
+
+        swish.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.masterGain);
+        swish.start(now, Math.random() * 2.0, 0.13);
       }
     }
 
@@ -2126,6 +2675,7 @@
             this.blockedByObstacle = true;
             const nx = dx / dist;
             const ny = dy / dist;
+            const radialImpactSpeed = -(this.vx * nx + this.vy * ny);
             // Push car slightly past minDist so it doesn't re-collide on the next sub-step
             this.x = b.x + nx * (minDist + 0.8);
             this.y = b.y + ny * (minDist + 0.8);
@@ -2158,9 +2708,10 @@
               this.angle += nudgeSign * 2.2 * dt;
             }
 
-            if (vn < -35 && this.impactCooldown <= 0) {
-              this.impactCooldown = 0.14;
-              audio.playImpact(false);
+            if ((radialImpactSpeed > 8 || vn < -8 || this.speed > 45) && this.impactCooldown <= 0) {
+              this.impactCooldown = 0.12;
+              const impactStrength = Math.min(1.0, Math.max(radialImpactSpeed, this.speed * 0.45) / 180);
+              audio.playBarrierImpact(impactStrength);
               game.triggerCameraImpulse(-defX * 3.5, -defY * 3.5);
             }
           }
@@ -2245,7 +2796,18 @@
           this.rpm = Math.min(1, Math.max(0.22, 0.35 + gearProgress * 0.65));
         }
 
-        audio.update(this.rpm, Math.max(this.slipAngle, (this.braking && !this.reversing && this.speed > 40) ? 0.45 : 0), this.surface, normSpeed);
+        audio.update(
+          this.rpm,
+          Math.max(this.slipAngle, (this.braking && !this.reversing && this.speed > 40) ? 0.45 : 0),
+          this.surface,
+          normSpeed,
+          {
+            dt,
+            braking: this.braking,
+            gear: this.gear,
+            speed: this.speed
+          }
+        );
 
         const rearOffset = -14;
         const frontOffset = 12;
