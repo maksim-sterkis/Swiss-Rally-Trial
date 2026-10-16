@@ -3855,21 +3855,21 @@
           let uiW, uiH;
           if (aspect >= 1.0) {
             // Horizontal (Desktop 16:9, 16:10, 21:9, or Landscape Mobile):
-            // Virtual height 820px (e.g. 1458x820 on 16:9), minimum width 1080px on 4:3/square
-            uiH = 820;
+            // Virtual height 750px (e.g. 1333x750 on 16:9), minimum width 1000px on 4:3/square
+            uiH = 750;
             uiW = uiH * aspect;
-            if (uiW < 1080) {
-              uiW = 1080;
+            if (uiW < 1000) {
+              uiW = 1000;
               uiH = uiW / aspect;
             }
           } else {
             // Vertical (Mobile Portrait 19.5:9, 20:10, 18:8, 9:16):
-            // Virtual width 396px (e.g. 396x858 on 19.5:9, 396x792 on 20:10, 396x891 on 18:8),
-            // minimum height 700px so modals and HUD always fit with generous breathing room
-            uiW = 396;
+            // Virtual width 372px (e.g. 372x806 on 19.5:9, 372x744 on 20:10, 372x837 on 18:8),
+            // minimum height 660px so modals and HUD fit comfortably
+            uiW = 372;
             uiH = uiW / aspect;
-            if (uiH < 700) {
-              uiH = 700;
+            if (uiH < 660) {
+              uiH = 660;
               uiW = uiH * aspect;
             }
           }
@@ -4206,11 +4206,11 @@
 
         // Zoom-invariant, aspect-ratio-adaptive camera FOV:
         // Computed directly from canvas dimensions (w, h), so browser zoom (Ctrl+ / Ctrl-) has zero effect.
-        // Smoothly blends between vertical mobile (18:8, 19.5:9, 20:10 -> 1100 geometric world span)
-        // and horizontal desktop (16:10, 16:9 -> 1260 geometric world span).
+        // Smoothly blends between vertical mobile (18:8, 19.5:9, 20:10 -> 720 geometric world span, ~490x1060 visible)
+        // and horizontal desktop (16:10, 16:9 -> 960 geometric world span, ~1280x720 visible).
         const aspect = w / Math.max(1, h);
         const orientBlend = Math.max(0, Math.min(1, (aspect - 0.65) / 0.55));
-        const targetWorldSpan = 1100 + orientBlend * 160;
+        const targetWorldSpan = 720 + orientBlend * 240;
         const baseZoom = Math.sqrt(w * h) / targetWorldSpan;
         const speedPullback = 1 - Math.min(0.1, (this.car.speed / 640) * 0.1);
         const zoom = baseZoom * speedPullback;
