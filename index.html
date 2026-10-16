@@ -5,6 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>Tarmac & Gravel — Swiss Rally Trial</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        screens: {
+          sm: { raw: '(min-aspect-ratio: 1/1)' }
+        }
+      }
+    };
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
@@ -39,6 +48,8 @@
       color: var(--ink);
       font-family: 'JetBrains Mono', monospace;
       touch-action: none;
+      -webkit-text-size-adjust: 100%;
+      text-size-adjust: 100%;
     }
 
     .font-display {
@@ -50,6 +61,17 @@
       width: 100%;
       height: 100%;
       touch-action: none;
+    }
+
+    /* Zoom-invariant virtual UI layer scaled to match physical viewport & aspect ratio */
+    #uiRoot {
+      position: fixed;
+      top: 0;
+      left: 0;
+      transform-origin: 0 0;
+      pointer-events: none;
+      z-index: 20;
+      overflow: hidden;
     }
 
     /* Crisp hard-edged print shadow */
@@ -82,8 +104,11 @@
   <!-- Primary Game Canvas -->
   <canvas id="gameCanvas"></canvas>
 
+  <!-- Zoom-Invariant Aspect-Ratio Tuned UI Layer -->
+  <div id="uiRoot">
+
   <!-- Minimalist Swiss Heuer Timing Strip (Top) -->
-  <header class="fixed top-0 left-0 right-0 z-20 pointer-events-none px-2 pt-2 sm:px-5 sm:pt-4 flex flex-col gap-1.5 max-w-5xl mx-auto">
+  <header class="absolute top-0 left-0 right-0 z-20 pointer-events-none px-2.5 pt-2.5 sm:px-5 sm:pt-4 flex flex-col gap-1.5 max-w-5xl mx-auto">
     <div class="print-card pointer-events-auto px-2.5 py-1.5 sm:px-4 sm:py-2.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5 sm:gap-3">
       <!-- Top Row on Mobile / Left Group on Desktop: Stage Selector + Stage Name + Utility Buttons (Mobile) -->
       <div class="flex items-center justify-between sm:justify-start gap-2 w-full sm:w-auto min-w-0">
@@ -157,7 +182,7 @@
   </header>
 
   <!-- Stage Selection & Instructions Drawer -->
-  <div id="stageModal" class="fixed inset-0 z-30 bg-[#1E1E1C]/40 flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
+  <div id="stageModal" class="absolute inset-0 z-30 pointer-events-auto bg-[#1E1E1C]/40 flex items-center justify-center p-2.5 sm:p-4 overflow-y-auto">
     <div class="print-card w-full max-w-xl p-3 sm:p-4 flex flex-col gap-2 my-auto">
       <div class="flex items-center justify-between border-b-2 border-[#1E1E1C] pb-1.5 gap-2">
         <div class="flex items-center gap-1.5 flex-wrap">
@@ -238,7 +263,7 @@
   </div>
 
   <!-- Stage Finish Timing Slip Overlay -->
-  <div id="finishOverlay" class="hidden fixed inset-0 z-30 bg-[#1E1E1C]/35 flex items-center justify-center p-4">
+  <div id="finishOverlay" class="hidden absolute inset-0 z-30 pointer-events-auto bg-[#1E1E1C]/35 flex items-center justify-center p-4">
     <div class="print-card w-full max-w-sm p-5 flex flex-col gap-4">
       <div class="border-b-2 border-[#1E1E1C] pb-2 flex items-center justify-between">
         <span class="font-display font-bold text-lg uppercase">STAGE COMPLETE</span>
@@ -266,7 +291,7 @@
   </div>
 
   <!-- Subtle Diegetic Touch Zone Brackets (Bottom Corners) -->
-  <div id="touchHints" class="fixed bottom-3 left-3 right-3 z-10 pointer-events-none flex justify-between items-end transition-opacity duration-500">
+  <div id="touchHints" class="absolute bottom-3 left-3 right-3 z-10 pointer-events-none flex justify-between items-end transition-opacity duration-500">
     <div id="leftTouchIndicator" class="border-l-2 border-b-2 border-[#1E1E1C]/60 px-3 py-2 text-[11px] font-bold uppercase tracking-widest bg-[#EAE4DC]/75">
       ◄ STEER L
     </div>
@@ -277,6 +302,8 @@
       STEER R ►
     </div>
   </div>
+
+  </div><!-- /#uiRoot -->
 
   <script>
     /**
@@ -3610,6 +3637,48 @@
 
       setupEvents() {
         window.addEventListener('resize', () => this.resize());
+        if (window.visualViewport) {
+          window.visualViewport.addEventListener('resize', () => this.resize());
+        }
+
+        // Prevent Ctrl/Cmd + (+, -, =, 0), Ctrl+Wheel, and pinch gestures from zooming UI or world
+        window.addEventListener(
+          'keydown',
+          (e) => {
+            if (
+              (e.ctrlKey || e.metaKey) &&
+              (e.key === '+' ||
+                e.key === '-' ||
+                e.key === '=' ||
+                e.key === '_' ||
+                e.key === '0' ||
+                e.code === 'Equal' ||
+                e.code === 'Minus' ||
+                e.code === 'Digit0' ||
+                e.code === 'NumpadAdd' ||
+                e.code === 'NumpadSubtract' ||
+                e.code === 'Numpad0')
+            ) {
+              e.preventDefault();
+            }
+          },
+          { capture: true, passive: false }
+        );
+
+        window.addEventListener(
+          'wheel',
+          (e) => {
+            if (e.ctrlKey || e.metaKey) {
+              e.preventDefault();
+            }
+          },
+          { capture: true, passive: false }
+        );
+
+        const preventGesture = (e) => e.preventDefault();
+        window.addEventListener('gesturestart', preventGesture, { capture: true, passive: false });
+        window.addEventListener('gesturechange', preventGesture, { capture: true, passive: false });
+        window.addEventListener('gestureend', preventGesture, { capture: true, passive: false });
 
         const unlockAudioOnce = () => {
           this.audio.unlock();
@@ -3619,6 +3688,7 @@
         window.addEventListener('keydown', unlockAudioOnce, { passive: true });
 
         window.addEventListener('keydown', (e) => {
+          if (e.ctrlKey || e.metaKey) return;
           if (e.code === 'ArrowLeft' || e.code === 'KeyA') this.keys.left = true;
           if (e.code === 'ArrowRight' || e.code === 'KeyD') this.keys.right = true;
           if (e.code === 'Space' || e.code === 'ArrowDown' || e.code === 'KeyS') {
@@ -3765,10 +3835,49 @@
       }
 
       resize() {
-        const dpr = Math.min(2, window.devicePixelRatio || 1);
-        this.canvas.width = window.innerWidth * dpr;
-        this.canvas.height = window.innerHeight * dpr;
-        this.dpr = dpr;
+        const vw = Math.max(1, window.innerWidth || document.documentElement.clientWidth || 1);
+        const vh = Math.max(1, window.innerHeight || document.documentElement.clientHeight || 1);
+        const aspect = vw / vh;
+
+        // Backing canvas resolution tracks physical pixels (capped at 3200px max dimension for GPU efficiency)
+        const rawDpr = window.devicePixelRatio || 1;
+        const maxBackingDim = 3200;
+        const backingScale = Math.min(rawDpr * 1.25, maxBackingDim / Math.max(vw, vh));
+        this.canvas.width = Math.max(1, Math.round(vw * backingScale));
+        this.canvas.height = Math.max(1, Math.round(vh * backingScale));
+        this.dpr = backingScale;
+        this.aspect = aspect;
+
+        // Lock #uiRoot to an aspect-ratio-determined virtual resolution (Horizontal Desktop vs Vertical Mobile).
+        // Because uiScale = vw / uiW, any browser zoom (Ctrl+ / Ctrl-) cancels out 100% mathematically.
+        const uiRoot = document.getElementById('uiRoot');
+        if (uiRoot) {
+          let uiW, uiH;
+          if (aspect >= 1.0) {
+            // Horizontal (Desktop 16:9, 16:10, 21:9, or Landscape Mobile):
+            // Virtual height 820px (e.g. 1458x820 on 16:9), minimum width 1080px on 4:3/square
+            uiH = 820;
+            uiW = uiH * aspect;
+            if (uiW < 1080) {
+              uiW = 1080;
+              uiH = uiW / aspect;
+            }
+          } else {
+            // Vertical (Mobile Portrait 19.5:9, 20:10, 18:8, 9:16):
+            // Virtual width 396px (e.g. 396x858 on 19.5:9, 396x792 on 20:10, 396x891 on 18:8),
+            // minimum height 700px so modals and HUD always fit with generous breathing room
+            uiW = 396;
+            uiH = uiW / aspect;
+            if (uiH < 700) {
+              uiH = 700;
+              uiW = uiH * aspect;
+            }
+          }
+          const uiScale = vw / uiW;
+          uiRoot.style.width = `${uiW}px`;
+          uiRoot.style.height = `${uiH}px`;
+          uiRoot.style.transform = `scale(${uiScale})`;
+        }
       }
 
       loadStage(index) {
@@ -3897,9 +4006,12 @@
           }
         }
 
-        // Camera Lead
-        const leadX = this.car.x + this.car.vx * 0.27;
-        const leadY = this.car.y + this.car.vy * 0.27;
+        // Aspect-aware Camera Lead: balanced for vertical mobile (19.5:9, 20:10, 18:8) vs horizontal desktop (16:9)
+        const isVertical = (this.aspect || 1) < 1.0;
+        const leadFactorX = isVertical ? 0.23 : 0.27;
+        const leadFactorY = isVertical ? 0.30 : 0.26;
+        const leadX = this.car.x + this.car.vx * leadFactorX;
+        const leadY = this.car.y + this.car.vy * leadFactorY;
         this.cam.x += (leadX - this.cam.x) * Math.min(1, 7.8 * dt);
         this.cam.y += (leadY - this.cam.y) * Math.min(1, 7.8 * dt);
         this.cam.impulseX *= 0.86;
@@ -4092,26 +4204,38 @@
         ctx.fillStyle = PALETTE.paper;
         ctx.fillRect(0, 0, w, h);
 
-        const minDim = Math.min(window.innerWidth, window.innerHeight);
-        const baseScale = minDim < 500 ? 0.72 : 0.86;
+        // Zoom-invariant, aspect-ratio-adaptive camera FOV:
+        // Computed directly from canvas dimensions (w, h), so browser zoom (Ctrl+ / Ctrl-) has zero effect.
+        // Smoothly blends between vertical mobile (18:8, 19.5:9, 20:10 -> 1100 geometric world span)
+        // and horizontal desktop (16:10, 16:9 -> 1260 geometric world span).
+        const aspect = w / Math.max(1, h);
+        const orientBlend = Math.max(0, Math.min(1, (aspect - 0.65) / 0.55));
+        const targetWorldSpan = 1100 + orientBlend * 160;
+        const baseZoom = Math.sqrt(w * h) / targetWorldSpan;
         const speedPullback = 1 - Math.min(0.1, (this.car.speed / 640) * 0.1);
-        const zoom = this.dpr * baseScale * speedPullback;
+        const zoom = baseZoom * speedPullback;
 
         const camX = this.cam.x + this.cam.impulseX;
         const camY = this.cam.y + this.cam.impulseY;
 
-        ctx.translate(w * 0.5, h * 0.5);
+        // Shift optical center slightly below the top timing strip so unobstructed playfield is balanced
+        const focalY = h * (aspect < 1.0 ? 0.535 : 0.52);
+
+        ctx.translate(w * 0.5, focalY);
         ctx.scale(zoom, zoom);
         ctx.translate(-camX, -camY);
 
+        const viewW = (w / zoom) * 1.08;
+        const viewH = (h / zoom) * 1.12;
+
         // 0. Draw Seamless Infinite Topographic Map Background
-        this.drawInfiniteTopography(ctx, camX, camY, w / zoom, h / zoom);
+        this.drawInfiniteTopography(ctx, camX, camY, viewW, viewH);
 
         // 1. Draw Baked World (Variable-Width Track, Physical Surface Transitions, Trees, Bushes & Rocks)
         ctx.drawImage(this.world.canvas, 0, 0);
 
         // 1B. Draw Bounded FIFO Tire Marks & Surface Ruts (Oldest marks fade & are removed once cap is reached)
-        this.world.drawTireMarks(ctx, camX, camY, w / zoom, h / zoom);
+        this.world.drawTireMarks(ctx, camX, camY, viewW, viewH);
 
         // 2. Draw Dust, Gravel & Foliage Burst Particles
         this.particles.draw(ctx);
